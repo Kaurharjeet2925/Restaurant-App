@@ -4,8 +4,8 @@ import MenuItemCard from "../components/MenuItemCard";
 export default function Dashboard() {
   return (
     <div className="ml-64 mt-20 p-6">
-
-      {/* Cards */}
+     Welcome to the Dashboard page.
+      {/* Cards
       <div className="grid grid-cols-4 gap-6">
         <MenuItemCard title="Total Orders" value="1,254" gradient="bg-gradient-to-r from-red-500 to-orange-400" />
         <MenuItemCard title="Completed" value="980" gradient="bg-gradient-to-r from-green-500 to-teal-400" />
@@ -13,7 +13,6 @@ export default function Dashboard() {
         <MenuItemCard title="Revenue" value="$12,540" gradient="bg-gradient-to-r from-blue-500 to-cyan-400" />
       </div>
 
-      {/* Orders Table */}
       <div className="mt-10 bg-white shadow rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
 
@@ -38,7 +37,7 @@ export default function Dashboard() {
             </tr>
           </tbody>
         </table>
-      </div>
+      </div> */}
 
     </div>
   );

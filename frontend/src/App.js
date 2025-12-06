@@ -1,15 +1,57 @@
 import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 
+// 🔒 Protected Route Wrapper
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/" replace />; // redirect to login
+  }
+
+  return children; // allow access
+};
+
+// 🧩 Layout for authenticated pages (Dashboard pages)
+const AdminLayout = ({ children }) => {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 ml-[240px]">
+        <Navbar />
+        {children}
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
-    <>
-      <Sidebar />
-      <Navbar />
-      <Dashboard />
-    </>
+    <BrowserRouter>
+      <Routes>
+
+        <Route path="/" element={<Login />} />
+
+        
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <Dashboard />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+      </Routes>
+    </BrowserRouter>
   );
 }
 
