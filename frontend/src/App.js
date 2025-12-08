@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-
+import Categories from "./pages/CategoryManagement/Categories";
+//import MenuItems from "./pages/MenuItems/MenuItems";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 
@@ -49,6 +50,27 @@ function App() {
             </ProtectedRoute>
           }
         />
+      <Route
+  path="/categories"
+  element={
+    <ProtectedRoute>
+      <AdminLayout>
+        <Categories />
+      </AdminLayout>
+    </ProtectedRoute>
+  }
+/>
+
+{/* <Route
+  path="/menu-items"
+  element={
+    <ProtectedRoute>
+      <AdminLayout>
+        <MenuItems />
+      </AdminLayout>
+    </ProtectedRoute>
+  }
+/> */}
 
       </Routes>
     </BrowserRouter>

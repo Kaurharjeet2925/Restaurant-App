@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+
 import {
   Home,
   List,
@@ -9,12 +11,13 @@ import {
 } from "lucide-react";
 
 const menu = [
-  { icon: <Home size={20} />, label: "Dashboard" },
-  { icon: <ShoppingBag size={20} />, label: "Orders" },
-  { icon: <List size={20} />, label: "Menu Items" },
-  { icon: <Users size={20} />, label: "Customers" },
-  { icon: <BarChart3 size={20} />, label: "Reports" },
-  { icon: <Settings size={20} />, label: "Settings" }
+  { icon: <Home size={20} />, label: "Dashboard", path: "/dashboard" },
+  { icon: <ShoppingBag size={20} />, label: "Orders", path: "/orders" },
+  { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
+  { icon: <List size={20} />, label: "Categories", path: "/categories" },
+  { icon: <Users size={20} />, label: "Customers", path: "/customers" },
+  { icon: <BarChart3 size={20} />, label: "Reports", path: "/reports" },
+  { icon: <Settings size={20} />, label: "Settings", path: "/settings" }
 ];
 
 export default function Sidebar() {
@@ -24,13 +27,14 @@ export default function Sidebar() {
 
       <ul className="space-y-3">
         {menu.map((item, i) => (
-          <li
+          <Link
+            to={item.path}
             key={i}
             className="flex items-center gap-3 px-4 py-2 cursor-pointer rounded-lg hover:bg-red-50 hover:text-red-500 transition"
           >
             {item.icon}
             <span className="font-medium">{item.label}</span>
-          </li>
+          </Link>
         ))}
       </ul>
     </div>

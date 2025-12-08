@@ -5,15 +5,29 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 const connectDB = require("./config/db");
 
-// IMPORT USER ROUTER
 const userRoutes = require("./routes/user.routes");
 const categoryRoutes = require("./routes/category.routes");
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
 
-// MIDDLEWARES
-app.use(cors());
+// ✅ FIXED CORS — MUST MATCH FRONTEND URL
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
+
+// ✅ SOCKET.IO CORS FIX
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  },
+});
+
 app.use(express.json());
 
 // Attach io to req for real-time communication
@@ -22,28 +36,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// REGISTER ROUTES
-// → THIS MAKES: /api/register AND /api/login WORK
+// ROUTES
 app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
 
 // SOCKET HANDLERS
 io.on("connection", (socket) => {
-  console.log("Socket connected", socket.id);
+  console.log("Socket connected:", socket.id);
 
   socket.on("join", (room) => {
     socket.join(room);
-    console.log(`${socket.id} joined ${room}`);
+    console.log(`Socket ${socket.id} joined room ${room}`);
   });
 
-  socket.on("disconnect", () => console.log("Socket disconnected", socket.id));
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
+  });
 });
 
-// START SERVER AFTER DATABASE CONNECTS
+// START SERVER
 const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
-  server.listen(PORT, () =>
-    console.log(`Server running on PORT ${PORT}`)
-  );
+  server.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
 });
