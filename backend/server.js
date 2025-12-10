@@ -4,14 +4,17 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const connectDB = require("./config/db");
+const cookieParser = require("cookie-parser");
 
 const userRoutes = require("./routes/user.routes");
 const categoryRoutes = require("./routes/category.routes");
-
+const menuRoutes = require("./routes/menuItem.routes");
 const app = express();
 const server = http.createServer(app);
 
-// ✅ FIXED CORS — MUST MATCH FRONTEND URL
+// -------------------------------------
+// ✅ CORS SETUP
+// -------------------------------------
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -19,7 +22,9 @@ app.use(
   })
 );
 
-// ✅ SOCKET.IO CORS FIX
+// -------------------------------------
+// ✅ SOCKET.IO SETUP
+// -------------------------------------
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -28,19 +33,47 @@ const io = new Server(server, {
   },
 });
 
+// -------------------------------------
+// ✅ MIDDLEWARES
+// -------------------------------------
 app.use(express.json());
+app.use(cookieParser());
+app.use("/uploads", express.static("uploads"));
 
-// Attach io to req for real-time communication
+
+// ------------------------------------------------
+// 🔥 CUSTOM EXPRESS LOGGER (YOUR FORMAT)
+// ------------------------------------------------
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+
+    console.log(
+      `🔹 [${req.method}] ${req.originalUrl} - Status: ${res.statusCode} (${duration}ms)`
+    );
+  });
+
+  next();
+});
+
+
+// Attach io to req
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// ROUTES
+// -------------------------------------
+// ✅ ROUTES
+// -------------------------------------
 app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
-
-// SOCKET HANDLERS
+app.use("/api", menuRoutes);
+// -------------------------------------
+// ✅ SOCKET HANDLERS
+// -------------------------------------
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -54,9 +87,13 @@ io.on("connection", (socket) => {
   });
 });
 
-// START SERVER
+// -------------------------------------
+// ✅ START SERVER
+// -------------------------------------
 const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
-  server.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
+  server.listen(PORT, () =>
+    console.log(`🚀 Server running on PORT ${PORT}`)
+  );
 });

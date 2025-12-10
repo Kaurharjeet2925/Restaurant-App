@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import {
   Home,
@@ -21,21 +21,29 @@ const menu = [
 ];
 
 export default function Sidebar() {
+  const location = useLocation();
+
   return (
     <div className="w-64 h-screen bg-white shadow-xl fixed left-0 top-0 px-4 py-6">
       <h2 className="text-2xl font-bold text-red-500 mb-8">Restro</h2>
 
       <ul className="space-y-3">
-        {menu.map((item, i) => (
-          <Link
-            to={item.path}
-            key={i}
-            className="flex items-center gap-3 px-4 py-2 cursor-pointer rounded-lg hover:bg-red-50 hover:text-red-500 transition"
-          >
-            {item.icon}
-            <span className="font-medium">{item.label}</span>
-          </Link>
-        ))}
+        {menu.map((item, i) => {
+          const active = location.pathname === item.path;
+
+          return (
+            <Link
+              to={item.path}
+              key={i}
+              className={`flex items-center gap-3 px-4 py-2 cursor-pointer rounded-lg transition 
+                ${active ? "bg-red-100 text-red-600 font-semibold" : "hover:bg-red-50 hover:text-red-500"}
+              `}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </ul>
     </div>
   );
