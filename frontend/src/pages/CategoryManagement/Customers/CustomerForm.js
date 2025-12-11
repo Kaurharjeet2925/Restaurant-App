@@ -16,10 +16,10 @@ const CustomerForm = ({ customer = {}, refresh, close }) => {
     const data = { name, phone, address };
 
     if (isEditing) {
-      await apiClient.put(`/api/customers/${customer._id}`, data);
+      await apiClient.put(`/customers/${customer._id}`, data);
       toast.success("Customer updated");
     } else {
-      await apiClient.post("/api/customers", data);
+      await apiClient.post("/customers", data);
       toast.success("Customer added");
     }
 

@@ -8,7 +8,7 @@ const Customers = () => {
   const [editingCustomer, setEditingCustomer] = useState(null);
 
   const fetchCustomers = async () => {
-    const res = await apiClient.get("/api/customers");
+    const res = await apiClient.get("/customers");
     setCustomers(res.data);
   };
 
