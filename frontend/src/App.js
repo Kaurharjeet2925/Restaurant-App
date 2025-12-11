@@ -5,7 +5,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Categories from "./pages/CategoryManagement/Categories";
 import MenuItems from "./pages/MenuItemManaement/MenuItems";
-
+//import CustomerForm from "./pages/CategoryManagement/Customers/CustomerForm";
+import Customers from "./pages/CategoryManagement/Customers/Customers";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 
@@ -69,7 +70,16 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+ <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <Customers />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

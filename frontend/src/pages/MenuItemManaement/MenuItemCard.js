@@ -66,14 +66,14 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
             <span>5.0</span>
           </div>
 
-          <button
+          {/* <button
             className="bg-orange-500 text-white text-xs px-3 py-1 rounded-md shadow
                        hover:bg-orange-600 transition"
             onClick={onEdit}
           >
             Edit Product
-          </button>
-        </div>
+          </button> */}
+       
 
         {/* Bottom Actions */}
         <div className="flex justify-end gap-4 pt-2">
@@ -91,6 +91,7 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
             <Trash2 size={18} />
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
