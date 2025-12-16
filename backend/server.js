@@ -9,6 +9,7 @@ const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/user.routes");
 const categoryRoutes = require("./routes/category.routes");
 const menuRoutes = require("./routes/menuItem.routes");
+const tableRoutes = require("./routes/table.routes");
 const CustomerRoutes = require("./routes/customer.routes");
 const app = express();
 const server = http.createServer(app);
@@ -73,6 +74,7 @@ app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", menuRoutes);
 app.use("/api",CustomerRoutes)
+app.use("/api",tableRoutes)
 // -------------------------------------
 // ✅ SOCKET HANDLERS
 // -------------------------------------

@@ -1,17 +1,18 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-
 import {
   Home,
   List,
   ShoppingBag,
   Users,
   Settings,
-  BarChart3
+  BarChart3,
+  Table as TableIcon
 } from "lucide-react";
 
 const menu = [
   { icon: <Home size={20} />, label: "Dashboard", path: "/dashboard" },
+  { icon: <TableIcon size={20} />, label: "Tables", path: "/tables" },
   { icon: <ShoppingBag size={20} />, label: "Orders", path: "/orders" },
   { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
   { icon: <List size={20} />, label: "Categories", path: "/categories" },
@@ -29,14 +30,18 @@ export default function Sidebar() {
 
       <ul className="space-y-3">
         {menu.map((item, i) => {
-          const active = location.pathname === item.path;
+          const active = location.pathname.startsWith(item.path);
 
           return (
             <Link
               to={item.path}
               key={i}
-              className={`flex items-center gap-3 px-4 py-2 cursor-pointer rounded-lg transition 
-                ${active ? "bg-red-100 text-red-600 font-semibold" : "hover:bg-red-50 hover:text-red-500"}
+              className={`flex items-center gap-3 px-4 py-2 rounded-lg transition
+                ${
+                  active
+                    ? "bg-red-100 text-red-600 font-semibold"
+                    : "hover:bg-red-50 hover:text-red-500"
+                }
               `}
             >
               {item.icon}

@@ -5,8 +5,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Categories from "./pages/CategoryManagement/Categories";
 import MenuItems from "./pages/MenuItemManaement/MenuItems";
-//import CustomerForm from "./pages/CategoryManagement/Customers/CustomerForm";
 import Customers from "./pages/CategoryManagement/Customers/Customers";
+import Tables from "./pages/Tables/Tables";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 
@@ -31,7 +31,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        
         {/* Login */}
         <Route path="/" element={<Login />} />
 
@@ -70,12 +69,26 @@ function App() {
             </ProtectedRoute>
           }
         />
- <Route
+
+        {/* Customers */}
+        <Route
           path="/customers"
           element={
             <ProtectedRoute>
               <AdminLayout>
                 <Customers />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Tables ✅ */}
+        <Route
+          path="/tables"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <Tables/>
               </AdminLayout>
             </ProtectedRoute>
           }
