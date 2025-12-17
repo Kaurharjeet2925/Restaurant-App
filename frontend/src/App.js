@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
+import { ToastContainer } from "react-toastify";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Categories from "./pages/CategoryManagement/Categories";
@@ -9,7 +9,8 @@ import Customers from "./pages/CategoryManagement/Customers/Customers";
 import Tables from "./pages/Tables/Tables";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
-
+import Settings from "./pages/settings/Settings";
+import "react-toastify/dist/ReactToastify.css";
 // 🔒 Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -29,6 +30,7 @@ const AdminLayout = ({ children }) => (
 
 function App() {
   return (
+    <>
     <BrowserRouter>
       <Routes>
         {/* Login */}
@@ -93,8 +95,29 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+  path="/settings"
+  element={
+    <ProtectedRoute>
+      <AdminLayout>
+        <Settings />
+      </AdminLayout>
+    </ProtectedRoute>
+  }
+/>
+
       </Routes>
+      
     </BrowserRouter>
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
+    </>
   );
 }
 

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../apiclient/apiclient";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import AddTable from "./AddTable";
 
-
+// POS colors
 const statusStyles = {
-  free: "bg-green-100 border-green-400",
-  occupied: "bg-red-100 border-red-400",
-  reserved: "bg-yellow-100 border-yellow-400",
+  free: "bg-green-50 border-green-400",
+  occupied: "bg-red-50 border-red-400",
+  reserved: "bg-yellow-50 border-yellow-400",
 };
 
 const Tables = () => {
@@ -19,7 +19,7 @@ const Tables = () => {
     try {
       const res = await apiClient.get("/tables");
       setTables(res.data);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load tables");
     }
   };
@@ -28,73 +28,107 @@ const Tables = () => {
     fetchTables();
   }, []);
 
-  const changeStatus = async (id, status) => {
-    await apiClient.patch(`/tables/${id}/status`, { status });
-    fetchTables();
-  };
-
   const deleteTable = async (id) => {
     if (!window.confirm("Delete this table?")) return;
     await apiClient.delete(`/tables/${id}`);
     fetchTables();
   };
 
+  // Group tables by area
+  const groupedTables = tables.reduce((acc, table) => {
+    const areaName = table.area?.name || "Unassigned";
+    acc[areaName] = acc[areaName] || [];
+    acc[areaName].push(table);
+    return acc;
+  }, {});
+
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">🍽️ Tables</h1>
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
+        🍽️ Tables
+      </h1>
 
-      {/* TABLE CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {tables.map((table) => (
+      {Object.keys(groupedTables).map((area) => (
+        <div key={area} className="mb-5">
+          {/* Area title */}
+          <h2 className="text-md font-semibold text-gray-700 mb-5 border-b pb-1">
+            {area}
+          </h2>
+
+          {/* POS GRID */}
           <div
-            key={table._id}
-            className={`border-2 rounded-xl p-4 shadow ${statusStyles[table.status]}`}
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4
+                       lg:grid-cols-6 xl:grid-cols-10 gap-2"
           >
-            <h2 className="text-xl font-bold">
-              Table {table.tableNumber}
-            </h2>
+            {groupedTables[area].map((table) => {
+              const isOccupied = table.status === "occupied";
 
-            <p className="text-sm">Capacity: {table.capacity}</p>
-            <p className="text-sm font-semibold capitalize mb-3">
-              Status: {table.status}
-            </p>
+              return (
+          <div
+  key={table._id}
+  className={`group relative rounded-xl border-2 h-[130px]
+    aspect-[1/1.15]
+    flex flex-col
+    transition
+    ${statusStyles[table.status]}
+    ${
+      table.status === "occupied"
+        ? "opacity-60 cursor-not-allowed"
+        : "cursor-pointer hover:shadow-lg"
+    }`}
+>
+  {/* CENTER CONTENT */}
+  <div className="flex-1 flex flex-col items-center justify-center">
+    <h3 className="text-xl font-bold tracking-wide">
+       {table.tableNumber}
+    </h3>
 
-            {/* STATUS BUTTONS */}
-            <div className="flex gap-2 mb-3">
-              {["free", "occupied", "reserved"].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => changeStatus(table._id, s)}
-                  className="text-xs px-2 py-1 border rounded hover:bg-white"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+    <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+      <Users size={14} />
+      {table.capacity}
+    </div>
+  </div>
 
-            {/* ACTIONS */}
-            <div className="flex justify-between">
-              <button
-                onClick={() => setEditingTable(table)}
-                className="text-blue-600 text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => deleteTable(table._id)}
-                className="text-red-600 text-sm"
-              >
-                Delete
-              </button>
-            </div>
+  {/* FOOTER (RESERVED SPACE) */}
+  <div className="relative h-8 flex items-center justify-center">
+    {/* STATUS (default) */}
+    <span className="text-xs font-medium capitalize group-hover:opacity-0 transition">
+      {table.status}
+    </span>
+
+    {/* ACTIONS (on hover) */}
+    <div className="absolute flex gap-4 opacity-0 group-hover:opacity-100 transition">
+      <button
+        onClick={() => setEditingTable(table)}
+        className="text-blue-600 text-xs hover:underline"
+      >
+        Edit
+      </button>
+      <button
+        onClick={() => deleteTable(table._id)}
+        className="text-red-600 text-xs hover:underline"
+      >
+        Del
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
 
       {/* ADD TABLE BUTTON */}
       <button
         onClick={() => setEditingTable({})}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-[#ff4d4d] text-white flex items-center justify-center shadow-xl"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full
+                   bg-[#ff4d4d] text-white flex items-center
+                   justify-center shadow-xl hover:bg-[#e63c3c]"
       >
         <Plus size={28} />
       </button>

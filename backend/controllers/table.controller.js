@@ -2,14 +2,14 @@ const Table = require("../models/table.model")
 
 exports.createTable = async(req,res)=>{
     try{
-        const {tableNumber, capacity} = req.body;
-        if(!tableNumber || !capacity){
+        const {tableNumber, capacity, area} = req.body;
+        if(!tableNumber || !capacity || !area){
             return res
-            .status(400).json({message: "Table number and Capacity are required"});
+            .status(400).json({message: "Table number, Capacity and area are required"});
         
         
       }
-      const exists = await Table.findOne({ tableNumber });
+      const exists = await Table.findOne({ tableNumber, area });
     if (exists) {
       return res
         .status(409)
@@ -19,6 +19,7 @@ exports.createTable = async(req,res)=>{
     const table = await Table.create({
       tableNumber,
       capacity,
+      area,
       status: "free",
     });
 
@@ -30,7 +31,10 @@ exports.createTable = async(req,res)=>{
 
 exports.getTables = async (req, res) => {
   try {
-    const tables = await Table.find().sort({ tableNumber: 1 });
+    const tables = await Table.find()
+      .populate("area", "name") // ✅ IMPORTANT
+      .sort({ "area.name": 1, tableNumber: 1 });
+
     res.status(200).json(tables);
   } catch (err) {
     res.status(500).json({ message: err.message });

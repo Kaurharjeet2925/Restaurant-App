@@ -5,8 +5,8 @@ const {createTable,getTables,updateTable,updateTableStatus,deleteTable} = requir
 
 router.post("/tables/create", auth, createTable);
 router.get("/tables", auth, getTables);
-router.put("/tables:id", auth,  updateTable);
-router.patch("/tables:id/status", auth, updateTableStatus);
-router.delete("/tables:id", auth,  deleteTable);
+router.put("/tables/:id", auth,  updateTable);
+router.patch("/tables/:id/status", auth, updateTableStatus);
+router.delete("/tables/:id", auth,  deleteTable);
 
 module.exports = router;

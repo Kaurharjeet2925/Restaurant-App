@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import apiClient from "../../apiclient/apiclient";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -8,9 +8,18 @@ const AddTable = ({ table = {}, refresh, close }) => {
 
   const [tableNumber, setTableNumber] = useState(table.tableNumber || "");
   const [capacity, setCapacity] = useState(table.capacity || "");
+  const [areas, setAreas] = useState([]);
+  const [area, setArea] = useState(table.area?._id || "");
+
+  // 🔥 Fetch areas
+  useEffect(() => {
+    apiClient.get("/area")
+      .then(res => setAreas(res.data))
+      .catch(() => toast.error("Failed to load areas"));
+  }, []);
 
   const handleSave = async () => {
-    if (!tableNumber || !capacity) {
+    if (!tableNumber || !capacity || !area) {
       return toast.error("All fields required");
     }
 
@@ -19,12 +28,14 @@ const AddTable = ({ table = {}, refresh, close }) => {
         await apiClient.put(`/tables/${table._id}`, {
           tableNumber,
           capacity,
+          area,
         });
         toast.success("Table updated");
       } else {
         await apiClient.post("/tables/create", {
           tableNumber,
           capacity,
+          area,
         });
         toast.success("Table added");
       }
@@ -38,7 +49,7 @@ const AddTable = ({ table = {}, refresh, close }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[350px] p-6 rounded-xl shadow relative">
+      <div className="bg-white w-[360px] p-6 rounded-xl shadow relative">
 
         <button className="absolute top-3 right-3" onClick={close}>
           <X />
@@ -48,6 +59,7 @@ const AddTable = ({ table = {}, refresh, close }) => {
           {isEditing ? "Edit Table" : "Add Table"}
         </h2>
 
+        {/* Table Number */}
         <label className="text-sm font-medium">Table Number</label>
         <input
           className="border w-full p-2 rounded mb-3"
@@ -55,6 +67,22 @@ const AddTable = ({ table = {}, refresh, close }) => {
           onChange={(e) => setTableNumber(e.target.value)}
         />
 
+        {/* Area */}
+        <label className="text-sm font-medium">Area</label>
+        <select
+          className="border w-full p-2 rounded mb-3"
+          value={area}
+          onChange={(e) => setArea(e.target.value)}
+        >
+          <option value="">Select Area</option>
+          {areas.map((a) => (
+            <option key={a._id} value={a._id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Capacity */}
         <label className="text-sm font-medium">Capacity</label>
         <input
           type="number"
