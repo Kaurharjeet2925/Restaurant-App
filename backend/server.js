@@ -5,7 +5,7 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 const connectDB = require("./config/db");
 const cookieParser = require("cookie-parser");
-
+const orderRoutes = require("./routes/order.routes")
 const userRoutes = require("./routes/user.routes");
 const categoryRoutes = require("./routes/category.routes");
 const menuRoutes = require("./routes/menuItem.routes");
@@ -75,8 +75,9 @@ app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", menuRoutes);
 app.use("/api",CustomerRoutes);
-app.use("/api",AreaRoutes)
-app.use("/api",tableRoutes)
+app.use("/api",AreaRoutes);
+app.use("/api",tableRoutes);
+app.use("/api", orderRoutes);
 // -------------------------------------
 // ✅ SOCKET HANDLERS
 // -------------------------------------

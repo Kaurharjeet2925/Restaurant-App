@@ -3,6 +3,7 @@ import apiClient from "../../apiclient/apiclient";
 import { Plus, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import AddTable from "./AddTable";
+import { useNavigate } from "react-router-dom";
 
 // POS colors
 const statusStyles = {
@@ -14,6 +15,20 @@ const statusStyles = {
 const Tables = () => {
   const [tables, setTables] = useState([]);
   const [editingTable, setEditingTable] = useState(null);
+  const navigate = useNavigate();
+
+  const handleTableClick = (table) => {
+  // 🚫 Reserved table → no action
+  if (table.status === "reserved") return;
+
+  const query = new URLSearchParams({
+    tableId: table._id,
+    orderId: table.currentOrderId || "",
+  }).toString();
+
+  navigate(`/orders?${query}`);
+};
+
 
   const fetchTables = async () => {
     try {
@@ -64,23 +79,20 @@ const Tables = () => {
               const isOccupied = table.status === "occupied";
 
               return (
-          <div
+      <div
   key={table._id}
+  onClick={() => handleTableClick(table)}
   className={`group relative rounded-xl border-2 h-[130px]
     aspect-[1/1.15]
     flex flex-col
     transition
     ${statusStyles[table.status]}
-    ${
-      table.status === "occupied"
-        ? "opacity-60 cursor-not-allowed"
-        : "cursor-pointer hover:shadow-lg"
-    }`}
+    cursor-pointer hover:shadow-lg`}
 >
   {/* CENTER CONTENT */}
   <div className="flex-1 flex flex-col items-center justify-center">
     <h3 className="text-xl font-bold tracking-wide">
-       {table.tableNumber}
+      {table.tableNumber}
     </h3>
 
     <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
@@ -89,23 +101,27 @@ const Tables = () => {
     </div>
   </div>
 
-  {/* FOOTER (RESERVED SPACE) */}
+  {/* FOOTER */}
   <div className="relative h-8 flex items-center justify-center">
-    {/* STATUS (default) */}
     <span className="text-xs font-medium capitalize group-hover:opacity-0 transition">
       {table.status}
     </span>
 
-    {/* ACTIONS (on hover) */}
     <div className="absolute flex gap-4 opacity-0 group-hover:opacity-100 transition">
       <button
-        onClick={() => setEditingTable(table)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditingTable(table);
+        }}
         className="text-blue-600 text-xs hover:underline"
       >
         Edit
       </button>
       <button
-        onClick={() => deleteTable(table._id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteTable(table._id);
+        }}
         className="text-red-600 text-xs hover:underline"
       >
         Del
@@ -113,6 +129,7 @@ const Tables = () => {
     </div>
   </div>
 </div>
+
 
 
 

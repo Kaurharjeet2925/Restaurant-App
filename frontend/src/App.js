@@ -11,6 +11,7 @@ import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import Settings from "./pages/settings/Settings";
 import "react-toastify/dist/ReactToastify.css";
+import OrderPage from "./pages/Order/OrderPage";
 // 🔒 Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -35,8 +36,6 @@ function App() {
       <Routes>
         {/* Login */}
         <Route path="/" element={<Login />} />
-
-        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -91,6 +90,16 @@ function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <Tables/>
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+         <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <OrderPage />
               </AdminLayout>
             </ProtectedRoute>
           }

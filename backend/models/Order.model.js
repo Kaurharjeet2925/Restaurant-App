@@ -1,32 +1,54 @@
 const mongoose = require("mongoose");
 
-const orderSchema = new mongoose.Schema({
-  tableId: {
+const orderItemSchema = new mongoose.Schema({
+  menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Table",
-    required: true
+    ref: "MenuItem",
+    required: true,
   },
-
-  items: [
-    {
-      menuItemId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "MenuItem"
-      },
-      name: String,
-      price: Number,
-      qty: Number
-    }
-  ],
-
-  status: {
-    type: String,
-    enum: ["draft", "sent_to_kitchen", "preparing", "ready", "paid"],
-    default: "draft"
+  name: String,
+  price: Number,
+  qty: {
+    type: Number,
+    required: true,
+    min: 1,
   },
+  total: Number,
+});
 
-  totalAmount: Number,
-  paymentMethod: String
-}, { timestamps: true });
+const orderSchema = new mongoose.Schema(
+  {
+    tableId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Table",
+      required: true,
+    },
+
+    items: [orderItemSchema],
+
+    status: {
+      type: String,
+      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "completed"],
+      default: "draft",
+    },
+
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid"],
+      default: "unpaid",
+    },
+
+    subTotal: Number,
+    tax: Number,
+    discount: Number,
+    totalAmount: Number,
+
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "upi", "card"],
+    },
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Order", orderSchema);

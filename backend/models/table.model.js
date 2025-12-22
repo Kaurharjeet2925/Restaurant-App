@@ -23,6 +23,13 @@ const tableSchema = new mongoose.Schema(
       enum: ["free", "occupied", "reserved"],
       default: "free",
     },
+
+    // 🔥 ADD THIS (ONLY THIS)
+    currentOrderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      default: null,
+    },
   },
   { timestamps: true }
 );
