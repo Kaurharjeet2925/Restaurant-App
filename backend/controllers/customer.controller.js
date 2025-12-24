@@ -59,3 +59,20 @@ exports.deleteCustomer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+exports.getCustomerByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number required" });
+    }
+
+    const customer = await Customer.findOne({ phone }).lean();
+
+    // IMPORTANT: return null if not found
+    return res.status(200).json(customer || null);
+  } catch (error) {
+    console.error("Error fetching customer by phone:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

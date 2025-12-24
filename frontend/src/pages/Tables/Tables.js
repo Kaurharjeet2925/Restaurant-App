@@ -4,7 +4,7 @@ import { Plus, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import AddTable from "./AddTable";
 import { useNavigate } from "react-router-dom";
-
+import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 // POS colors
 const statusStyles = {
   free: "bg-green-50 border-green-400",
@@ -13,21 +13,27 @@ const statusStyles = {
 };
 
 const Tables = () => {
-  const [tables, setTables] = useState([]);
-  const [editingTable, setEditingTable] = useState(null);
+ const [tables, setTables] = useState([]);
+ const [selectedTable, setSelectedTable] = useState(null);
+ const [editingTable, setEditingTable] = useState(null);
+
+
   const navigate = useNavigate();
 
-  const handleTableClick = (table) => {
-  // 🚫 Reserved table → no action
+const handleTableClick = (table) => {
   if (table.status === "reserved") return;
 
-  const query = new URLSearchParams({
-    tableId: table._id,
-    orderId: table.currentOrderId || "",
-  }).toString();
+  // If already occupied → open order
+  if (table.status === "occupied" && table.currentOrderId) {
+    navigate(`/orders?tableId=${table._id}&orderId=${table.currentOrderId}`);
+    return;
+  }
 
-  navigate(`/orders?${query}`);
+  // Free table → open customer form
+  setSelectedTable(table);
 };
+
+
 
 
   const fetchTables = async () => {
@@ -158,6 +164,25 @@ const Tables = () => {
           refresh={fetchTables}
         />
       )}
+      {selectedTable && (
+  <CustomerForm
+    mode="dine-in"
+    close={() => setSelectedTable(null)}
+    onDone={async (customerId) => {
+      // Occupy table AFTER customer submit
+      await apiClient.patch(
+        `/tables/${selectedTable._id}/occupy`,
+        { customerId }
+      );
+
+      setSelectedTable(null);
+      fetchTables();
+
+      navigate(`/orders?tableId=${selectedTable._id}`);
+    }}
+  />
+)}
+
     </div>
   );
 };
