@@ -25,7 +25,7 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
       {/* IMAGE LARGE */}
       <div className="w-full h-48 overflow-hidden">
         <img
-          src={`http://localhost:5000${item.image}`}
+          src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
           alt={item.name}
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         />

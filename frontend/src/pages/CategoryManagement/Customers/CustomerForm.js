@@ -45,7 +45,6 @@ const CustomerForm = ({
       return toast.error("Name & phone required");
     }
 
-    // 🟡 DINE-IN FLOW
     if (mode === "dine-in") {
       let finalCustomerId = customerId;
 
@@ -64,7 +63,6 @@ const CustomerForm = ({
       return;
     }
 
-    // 🟢 MANAGE MODE (Customer page)
     if (customerId) {
       await apiClient.put(`/customers/${customerId}`, {
         name,

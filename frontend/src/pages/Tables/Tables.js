@@ -23,15 +23,16 @@ const Tables = () => {
 const handleTableClick = (table) => {
   if (table.status === "reserved") return;
 
-  // If already occupied → open order
-  if (table.status === "occupied" && table.currentOrderId) {
-    navigate(`/orders?tableId=${table._id}&orderId=${table.currentOrderId}`);
+  // ✅ OCCUPIED → always open POS screen
+  if (table.status === "occupied") {
+    navigate(`/orders?tableId=${table._id}`);
     return;
   }
 
-  // Free table → open customer form
+  // ✅ FREE → open customer form
   setSelectedTable(table);
 };
+
 
 
 

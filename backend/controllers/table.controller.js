@@ -1,5 +1,5 @@
 const Table = require("../models/table.model")
-
+const mongoose = require("mongoose");
 exports.createTable = async(req,res)=>{
     try{
         const {tableNumber, capacity, area} = req.body;
@@ -99,3 +99,47 @@ exports.deleteTable = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+exports.occupyTable = async (req, res) => {
+  try {
+    const { customerId } = req.body;
+
+    const table = await Table.findById(req.params.id);
+
+    if (!table) {
+      return res.status(404).json({ message: "Table not found" });
+    }
+
+    table.status = "occupied";
+    table.customerId = customerId;
+
+    await table.save();
+
+    res.json(table);
+  } catch (err) {
+    console.error("Occupy table error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.getTableById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🚨 Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid table id" });
+    }
+
+    const table = await Table.findById(id)
+      .populate("customerId");
+
+    if (!table) {
+      return res.status(404).json({ message: "Table not found" });
+    }
+
+    res.json(table);
+  } catch (err) {
+    console.error("Get table by id error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
