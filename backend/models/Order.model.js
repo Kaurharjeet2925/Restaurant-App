@@ -16,6 +16,19 @@ const orderItemSchema = new mongoose.Schema({
   total: Number,
 });
 
+const kotSchema = new mongoose.Schema(
+  {
+    kotNo: Number,
+    items: [orderItemSchema],
+    status: {
+      type: String,
+      enum: ["pending", "preparing", "ready"],
+      default: "pending",
+    },
+  },
+  { timestamps: true }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     tableId: {
@@ -24,7 +37,11 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
 
+    // ✅ CURRENT BILL ITEMS
     items: [orderItemSchema],
+
+    // ✅ KOT HISTORY (NEW)
+    kots: [kotSchema],
 
     status: {
       type: String,

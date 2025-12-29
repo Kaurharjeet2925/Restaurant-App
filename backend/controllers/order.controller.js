@@ -1,56 +1,52 @@
 const Order = require("../models/order.model")
 const Table = require("../models/table.model")
 
-exports.createOrder = async(req,res)=>{
-    try{
-       const { tableId, items } = req.body;
-       if(!tableId || !items ||items.length === 0){
-        return res.status(400).json({message: "Table and Items are required"});
-       }
-       const table =await Table.findById(tableId)
-       if (!table) {
-          return res.status(404).json({ message: "Table not found" });
-       }
-       if (table.status !== "free") {
-           return res
-            .status(400)
-            .json({ message: "Table is already occupied" });
-        }
-        let subTotal = 0;
+exports.createOrder = async (req, res) => {
+  try {
+    const { tableId, items } = req.body;
 
-       const formattedItems = items.map((item) => {
-         const total = item.price * item.qty;
-           subTotal += total;
-
-         return {
-             ...item,
-              total,
-                 } ;
-            });
-         const order=await Order.create({
-            tableId,
-            items:formattedItems,
-            subTotal,
-            totalAmount: subTotal,
-            status:"draft"
-
-         })
-         table.status = "occupied";
-         table.currentOrderId = order._id;
-         await table.save();
-         res.status(201).json({
-         message: "Order created successfully",
-         order,
-         });
-
-
+    if (!tableId || !items || items.length === 0) {
+      return res.status(400).json({ message: "Table and items required" });
     }
-    catch (err) {
-  console.error("CREATE ORDER ERROR:", err.response?.data || err.message);
-  toast.error(err.response?.data?.message || "Failed to create order");
-}
 
-}
+    let subTotal = 0;
+    const formattedItems = items.map(i => {
+      const total = i.price * i.qty;
+      subTotal += total;
+      return { ...i, total };
+    });
+
+    const order = await Order.create({
+      tableId,
+      items: formattedItems,
+      subTotal,
+      totalAmount: subTotal,
+     kots: [
+  {
+    kotNo: 1,
+    items: formattedItems,
+    status: "pending", // ✅ ADD HERE
+  },
+],
+
+    });
+
+    await Table.findByIdAndUpdate(tableId, {
+      status: "occupied",
+      currentOrderId: order._id,
+    });
+
+    return res.status(201).json({
+      message: "Order created",
+      order,
+      kotNo: 1, // ✅ FRONTEND USES THIS
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 
 exports.updateOrder = async (req, res) => {
@@ -58,78 +54,89 @@ exports.updateOrder = async (req, res) => {
     const { orderId } = req.params;
     const { items } = req.body;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: "Items are required" });
-    }
-
-    // 1️⃣ Find order
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // 2️⃣ Check order status
-    if (["completed"].includes(order.status)) {
-      return res
-        .status(400)
-        .json({ message: "Cannot update completed order" });
-    }
-
-    // 3️⃣ Recalculate totals
     let subTotal = 0;
-    const formattedItems = items.map((item) => {
-      const total = item.price * item.qty;
+    const formattedItems = items.map(i => {
+      const total = i.price * i.qty;
       subTotal += total;
-      return { ...item, total };
+      return { ...i, total };
     });
 
-    // 4️⃣ Update order
+    // 🔥 NEXT KOT NUMBER (BACKEND CONTROL)
+    const nextKotNo = (order.kots?.length || 0) + 1;
+
     order.items = formattedItems;
     order.subTotal = subTotal;
     order.totalAmount = subTotal;
 
+    order.kots.push({
+      kotNo: nextKotNo,
+      items: formattedItems,
+      status: "pending"
+    });
+
     await order.save();
 
-    res.json({
-      message: "Order updated successfully",
+    return res.json({
+      message: "KOT added",
       order,
+      kotNo: nextKotNo, // ✅ FRONTEND USES THIS
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
 
 exports.sendToKitchen = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // 1️⃣ Find order
+    if (!orderId || orderId === "null") {
+      return res.status(400).json({ message: "Order ID required" });
+    }
+
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // 2️⃣ Allow only draft orders
-    if (order.status !== "draft") {
+    // 🔥 FIND FIRST PENDING KOT
+    const kot = order.kots.find(k => k.status === "pending");
+
+    if (!kot) {
       return res.status(400).json({
-        message: "Only draft orders can be sent to kitchen",
+        message: "No pending KOT to send",
       });
     }
 
-    // 3️⃣ Update status
+    // ✅ SEND ONLY THIS KOT
+    kot.status = "preparing";
+
+    // ✅ KEEP ORDER STATUS IN SYNC
     order.status = "sent_to_kitchen";
+
     await order.save();
 
     res.json({
-      message: "Order sent to kitchen successfully",
+      message: `KOT ${kot.kotNo} sent to kitchen`,
+      kotNo: kot.kotNo,
       order,
     });
   } catch (error) {
-    console.error(error);
+    console.error("SEND TO KITCHEN ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 exports.updateKitchenStatus = async (req, res) => {
   try {
     const { orderId } = req.params;

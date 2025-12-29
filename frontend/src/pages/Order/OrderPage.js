@@ -16,6 +16,7 @@ const OrderPage = () => {
   const [categories, setCategories] = useState([]);
   const [activeCat, setActiveCat] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [orderId, setOrderId] = useState(null);
 
   /* ================= GUARD ================= */
   useEffect(() => {
@@ -36,10 +37,36 @@ const OrderPage = () => {
           apiClient.get("/menu"),
         ]);
 
-        setTable(tableRes.data);
+        const tableData = tableRes.data;
+        setTable(tableData);
         setMenu(menuRes.data || []);
-      } catch {
-        toast.error("Failed to load POS data");
+
+        // ✅ ORDER ALREADY CREATED WHEN TABLE OCCUPIED
+        if (tableData.currentOrderId) {
+          setOrderId(tableData.currentOrderId);
+
+          const orderRes = await apiClient.get(
+            `/orders/${tableData.currentOrderId}`
+          );
+
+          const order = orderRes.data;
+
+          setKots(order.kots || []);
+
+          // hydrate cart from order
+          const loadedCart = order.items.map(i => ({
+            _id: i.menuItemId,
+            name: i.name,
+            price: i.price,
+            qty: i.qty,
+            kotQty: i.qty,
+          }));
+
+          setCart(loadedCart);
+        }
+      } catch (err) {
+        console.error("POS LOAD ERROR:", err);
+        toast.error("Failed to load POS");
         navigate("/tables");
       } finally {
         setLoading(false);
@@ -88,12 +115,19 @@ const OrderPage = () => {
     );
   };
 
-  /* ================= SEND TO KOT ================= */
-  const sendToKOT = () => {
+  /* ================= SEND KOT (SEND TO KITCHEN) ================= */
+  const sendToKOT = async () => {
+    if (!orderId) {
+      toast.error("Order not initialized");
+      return;
+    }
+
     const newItems = cart
       .filter(i => i.qty > i.kotQty)
       .map(i => ({
+        menuItemId: i._id,
         name: i.name,
+        price: i.price,
         qty: i.qty - i.kotQty,
       }));
 
@@ -102,25 +136,37 @@ const OrderPage = () => {
       return;
     }
 
-    const kotNo = kots.length + 1;
+    try {
+      const res = await apiClient.put(`/orders/${orderId}`, {
+        items: cart.map(i => ({
+          menuItemId: i._id,
+          name: i.name,
+          price: i.price,
+          qty: i.qty,
+        })),
+      });
 
-    setKots(prev => [
-      ...prev,
-      {
-        kotNo,
-        status: "pending",
-        items: newItems,
-        time: new Date(),
-      },
-    ]);
+      const kotNo = res.data.kotNo;
 
-    setCart(prev =>
-      prev.map(i =>
-        i.qty > i.kotQty ? { ...i, kotQty: i.qty } : i
-      )
-    );
+      setKots(prev => [
+        ...prev,
+        {
+          kotNo,
+          status: "pending",
+          items: newItems,
+        },
+      ]);
 
-    toast.success(`KOT ${kotNo} sent`);
+      setCart(prev =>
+        prev.map(i =>
+          i.qty > i.kotQty ? { ...i, kotQty: i.qty } : i
+        )
+      );
+
+      toast.success(`KOT ${kotNo} sent`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send KOT");
+    }
   };
 
   const total = useMemo(
@@ -139,7 +185,6 @@ const OrderPage = () => {
         <div className="col-span-8 bg-white rounded-xl p-4 overflow-y-auto">
           <h2 className="font-semibold mb-4">Menu</h2>
 
-          {/* Categories */}
           <div className="flex gap-2 mb-4 flex-wrap">
             <CategoryTab
               label="All"
@@ -156,7 +201,6 @@ const OrderPage = () => {
             ))}
           </div>
 
-          {/* Menu Grid */}
           <div className="grid grid-cols-4 gap-4">
             {filteredMenu.map(item => (
               <div
@@ -182,17 +226,13 @@ const OrderPage = () => {
 
         {/* ================= RIGHT PANEL ================= */}
         <div className="col-span-4 bg-white rounded-xl p-4 flex flex-col justify-between">
-
-          {/* Current Items */}
           <div>
             <h2 className="font-semibold mb-2">
               Table {table.tableNumber}
             </h2>
 
             {cart.length === 0 && (
-              <p className="text-sm text-gray-400">
-                No items added
-              </p>
+              <p className="text-sm text-gray-400">No items added</p>
             )}
 
             {cart.map(i => (
@@ -216,15 +256,20 @@ const OrderPage = () => {
               </div>
             ))}
 
-            {/* SEND TO KOT */}
+            {/* SEND TO KITCHEN */}
             <button
               onClick={sendToKOT}
-              className="w-full mt-3 bg-black text-white py-2 rounded"
+              disabled={cart.every(i => i.qty === i.kotQty)}
+              className={`w-full py-2 rounded mt-2 ${
+                cart.every(i => i.qty === i.kotQty)
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-800 text-white"
+              }`}
             >
-              Send to KOT
+              Send to Kitchen
             </button>
 
-            {/* ===== KOT HISTORY ===== */}
+            {/* KOT HISTORY */}
             {kots.length > 0 && (
               <div className="mt-4 border-t pt-3">
                 <h3 className="font-semibold text-sm mb-2">
@@ -237,7 +282,7 @@ const OrderPage = () => {
                     className="mb-3 rounded border bg-gray-50 p-2"
                   >
                     <div className="font-medium text-sm mb-1">
-                      KOT {kot.kotNo}
+                      KOT {kot.kotNo} ({kot.status})
                     </div>
                     <ul className="text-xs ml-3">
                       {kot.items.map((it, idx) => (
@@ -252,7 +297,6 @@ const OrderPage = () => {
             )}
           </div>
 
-          {/* TOTAL */}
           <div>
             <div className="flex justify-between font-bold border-t pt-3">
               <span>Total</span>

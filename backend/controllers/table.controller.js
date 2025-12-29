@@ -1,4 +1,5 @@
 const Table = require("../models/table.model")
+const Order = require("../models/order.model")
 const mongoose = require("mongoose");
 exports.createTable = async(req,res)=>{
     try{
@@ -99,27 +100,45 @@ exports.deleteTable = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+
 exports.occupyTable = async (req, res) => {
   try {
+    const { tableId } = req.params;
     const { customerId } = req.body;
 
-    const table = await Table.findById(req.params.id);
-
+    const table = await Table.findById(tableId);
     if (!table) {
       return res.status(404).json({ message: "Table not found" });
     }
 
+    // 🔥 CREATE EMPTY ORDER HERE
+    const order = await Order.create({
+      tableId: table._id,
+      items: [],
+      subTotal: 0,
+      totalAmount: 0,
+      status: "draft",
+    });
+
     table.status = "occupied";
     table.customerId = customerId;
+    table.currentOrderId = order._id;
 
     await table.save();
 
-    res.json(table);
+    res.json({
+      message: "Table occupied & order created",
+      orderId: order._id, // ✅ VERY IMPORTANT
+    });
   } catch (err) {
-    console.error("Occupy table error:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 exports.getTableById = async (req, res) => {
   try {
     const { id } = req.params;
