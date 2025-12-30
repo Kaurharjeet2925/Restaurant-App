@@ -12,6 +12,8 @@ import Navbar from "./components/Navbar";
 import Settings from "./pages/settings/Settings";
 import "react-toastify/dist/ReactToastify.css";
 import OrderPage from "./pages/Order/OrderPage";
+import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
+import AddUser from "./pages/settings/User/AddUser"; 
 // 🔒 Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -104,6 +106,18 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Kitchen Dashboard */}
+        <Route
+          path="/kitchen"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <KitchenDashboard />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route
   path="/settings"
   element={
@@ -114,6 +128,28 @@ function App() {
     </ProtectedRoute>
   }
 />
+<Route
+  path="/settings/users/add"
+  element={
+    <ProtectedRoute>
+      <AdminLayout>
+        <AddUser />
+      </AdminLayout>
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/settings/users/edit/:id"
+  element={
+    <ProtectedRoute>
+      <AdminLayout>
+        <AddUser />
+      </AdminLayout>
+    </ProtectedRoute>
+  }
+/>
+
 
       </Routes>
       

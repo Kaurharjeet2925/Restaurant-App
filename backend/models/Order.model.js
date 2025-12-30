@@ -14,6 +14,11 @@ const orderItemSchema = new mongoose.Schema({
     min: 1,
   },
   total: Number,
+  status: {
+    type: String,
+    enum: ["pending", "prepared"],
+    default: "pending",
+  },
 });
 
 const kotSchema = new mongoose.Schema(

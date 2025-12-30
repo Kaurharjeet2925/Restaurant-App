@@ -7,13 +7,15 @@ import {
   Users,
   Settings,
   BarChart3,
-  Table as TableIcon
-} from "lucide-react";
+  Table as TableIcon,
+  Coffee
+} from "lucide-react"; 
 
 const menu = [
   { icon: <Home size={20} />, label: "Dashboard", path: "/dashboard" },
   { icon: <TableIcon size={20} />, label: "Tables", path: "/tables" },
   { icon: <ShoppingBag size={20} />, label: "Orders", path: "/orders" },
+  { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
   { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
   { icon: <List size={20} />, label: "Categories", path: "/categories" },
   { icon: <Users size={20} />, label: "Customers", path: "/customers" },

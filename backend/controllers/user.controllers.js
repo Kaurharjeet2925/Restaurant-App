@@ -1,25 +1,111 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 
-// Generate JWT Token
+/* ===============================
+   JWT TOKEN
+================================ */
 const generateToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-};
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET not configured");
+  }
 
-// Register
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "1d" }
+  );
+};
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email and password are required" });
+    }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
     const newUser = await User.create({ name, email, password });
     const token = generateToken(newUser);
 
     res.status(201).json({
+      message: "Registration successful",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error registering user", error: error.message });
+  }
+};
+exports.loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = generateToken(user);
+
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error logging in", error: error.message });
+  }
+};
+
+// REGISTER
+exports.registerUser = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const newUser = await User.create({
+      name,
+      email,
+      password,
+      role: "waiter", // default role for self-registered users
+    });
+
+    const token = generateToken(newUser);
+
+    res.status(201).json({
       message: "User registered successfully",
-      user: { id: newUser._id, name: newUser.name, email: newUser.email },
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
       token,
     });
   } catch (error) {
@@ -27,47 +113,34 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// Login
-exports.loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    console.log("Attempting login for email:", email);
-
-    const user = await User.findOne({ email });
-    console.log("User found:", user ? user.email : "NOT FOUND");
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
-
-    const isMatch = await user.comparePassword(password);
-    console.log("Password match:", isMatch);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-    const token = generateToken(user);
-
-    res.json({
-      message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      token,
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Error logging in", error: error.message });
-  }
-};
-
 
 exports.createUserBySuperAdmin = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, phone, gender, address, dateofbirth, role } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      gender,
+      address,
+      dateofbirth,
+      role,
+    } = req.body;
 
-    // Only allow admin or delivery-boy
-    if (!["admin", "delivery-boy"].includes(role)) {
-      return res.status(400).json({ 
-        message: "Only 'admin' or 'delivery-boy' can be created by superadmin" 
-      });
+    // ✅ Only admin/superAdmin can create users
+    if (!["admin", "superAdmin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
-    const existing = await User.findOne({ email });
-    if (existing) {
+    // ✅ Allowed roles
+    const allowedRoles = ["admin", "waiter", "kitchen", "billing"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: "Invalid role selected" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
@@ -80,26 +153,27 @@ exports.createUserBySuperAdmin = async (req, res) => {
       address,
       dateofbirth,
       role,
-      image: req.file ? `/uploads/${req.file.filename}` : null,
+      uploadImage: req.file ? `/uploads/${req.file.filename}` : null,
     });
 
     res.status(201).json({
-      message: `${role} created successfully`,
+      message: "User created successfully",
       user: {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
-        image: newUser.image,
-      }
+        uploadImage: newUser.uploadImage,
+      },
     });
-
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Get all users
+/* ===============================
+   GET ALL USERS
+================================ */
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -112,12 +186,14 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID
+/* ===============================
+   GET USER BY ID
+================================ */
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const user = await User.findById(id).select("-password");
-    
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -131,7 +207,23 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Update user
+// GET MY PROFILE
+exports.getMyProfile = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "Profile retrieved successfully", user });
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving profile", error: error.message });
+  }
+};
+
+/* ===============================
+   UPDATE USER
+================================ */
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -142,7 +234,6 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update fields if provided
     if (name) user.name = name;
     if (email) user.email = email;
     if (phone) user.phone = phone;
@@ -150,7 +241,7 @@ exports.updateUser = async (req, res) => {
     if (address) user.address = address;
     if (dateofbirth) user.dateofbirth = dateofbirth;
     if (role) user.role = role;
-    if (req.file) user.image = `/uploads/${req.file.filename}`;
+    if (req.file) user.uploadImage = `/uploads/${req.file.filename}`;
 
     await user.save();
 
@@ -165,20 +256,22 @@ exports.updateUser = async (req, res) => {
         gender: user.gender,
         address: user.address,
         dateofbirth: user.dateofbirth,
-        image: user.image,
-      }
+        uploadImage: user.uploadImage,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Error updating user", error: error.message });
   }
 };
 
-// Delete user
+/* ===============================
+   DELETE USER
+================================ */
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
 
+    const user = await User.findByIdAndDelete(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -189,21 +282,9 @@ exports.deleteUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-      }
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Error deleting user", error: error.message });
-  }
-};
-
-// GET ALL DELIVERY PERSONS
-exports.getDeliveryPersons = async (req, res) => {
-  try {
-    const deliveryPersons = await User.find({ role: "delivery-boy" })
-      .select("_id name phone email");
-
-    res.json(deliveryPersons);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching delivery persons", error: error.message });
   }
 };

@@ -1,17 +1,30 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Areas from "./AreaManagement/Areas";
-
-
-
+import UsersSettings from "./User/UsersSettings";
 
 const tabs = [
   { key: "areas", label: "Areas / Floors" },
   { key: "users", label: "Users" },
-  { key: "taxes", label: "Taxes" }
+  { key: "taxes", label: "Taxes" },
 ];
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("areas");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ✅ READ TAB FROM URL
+  const tabFromUrl = searchParams.get("tab") || "areas";
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  // ✅ SYNC when URL changes
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    setSearchParams({ tab: key });
+  };
 
   return (
     <div className="p-6">
@@ -20,34 +33,28 @@ const Settings = () => {
       </h1>
 
       {/* TABS */}
-      <div className="flex gap-3 border-b mb-6">
-        {tabs.map(tab => (
+      <div className="flex gap-6 border-b mb-6">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 font-medium transition
-              ${
-                activeTab === tab.key
-                  ? "border-b-2 border-[#ff4d4d] text-[#ff4d4d]"
-                  : "text-gray-500 hover:text-gray-700"
-              }
-            `}
+            onClick={() => handleTabChange(tab.key)}
+            className={`pb-2 font-medium transition ${
+              activeTab === tab.key
+                ? "border-b-2 border-[#ff4d4d] text-[#ff4d4d]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* TAB CONTENT */}
-      <div>
-        {activeTab === "areas" && <Areas />}
-        {activeTab === "users" && (
-          <div className="text-gray-500">Users settings coming soon</div>
-        )}
-        {activeTab === "taxes" && (
-          <div className="text-gray-500">Taxes settings coming soon</div>
-        )}
-      </div>
+      {/* CONTENT */}
+      {activeTab === "areas" && <Areas />}
+      {activeTab === "users" && <UsersSettings />}
+      {activeTab === "taxes" && (
+        <div className="text-gray-500">Taxes settings coming soon</div>
+      )}
     </div>
   );
 };
