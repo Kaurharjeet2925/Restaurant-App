@@ -105,11 +105,20 @@ exports.deleteTable = async (req, res) => {
 
 exports.occupyTable = async (req, res) => {
   try {
-    const { tableId } = req.params;
+    const { id } = req.params;
     const { customerId } = req.body;
 
-    const table = await Table.findById(tableId);
+    console.log(`[occupyTable] called with id=${id} body=${JSON.stringify(req.body)}`);
+
+    // Validate ObjectId early
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.warn(`[occupyTable] invalid id: ${id}`);
+      return res.status(400).json({ message: "Invalid table id" });
+    }
+
+    const table = await Table.findById(id);
     if (!table) {
+      console.warn(`[occupyTable] table not found for id: ${id}`);
       return res.status(404).json({ message: "Table not found" });
     }
 
@@ -128,12 +137,14 @@ exports.occupyTable = async (req, res) => {
 
     await table.save();
 
+    console.log(`[occupyTable] success - table ${id} occupied, order ${order._id}`);
+
     res.json({
       message: "Table occupied & order created",
       orderId: order._id, // ✅ VERY IMPORTANT
     });
   } catch (err) {
-    console.error(err);
+    console.error("[occupyTable] error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
