@@ -10,12 +10,12 @@ const KotList = ({ title, kots, reload }) => {
   }, {});
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
+    <div className="bg-white rounded-lg shadow-sm flex flex-col h-full">
       <div className="px-4 py-2 border-b font-semibold text-gray-700">
         {title} ({kots.length})
       </div>
 
-      <div className="p-3 space-y-4 max-h-[80vh] overflow-y-auto">
+      <div className="p-3 space-y-4 overflow-y-auto flex-1">
         {Object.keys(groupedByTable).length === 0 && (
           <p className="text-sm text-gray-400 text-center">
             No orders

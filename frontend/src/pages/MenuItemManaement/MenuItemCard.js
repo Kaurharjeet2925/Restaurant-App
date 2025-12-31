@@ -19,11 +19,12 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
 
   return (
     <div
-      className="bg-white rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]
-                 border border-gray-100 overflow-hidden w-full max-w-xs mx-auto"
-    >
+  className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)]
+             border border-gray-100 overflow-hidden w-full max-w-[230px] mx-auto"
+>
+
       {/* IMAGE LARGE */}
-      <div className="w-full h-48 overflow-hidden">
+      <div className="w-full h-36 overflow-hidden">
         <img
           src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
           alt={item.name}
@@ -32,8 +33,7 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
       </div>
 
       {/* CONTENT SMALL & CLEAN */}
-      <div className="p-3 space-y-2">
-
+     <div className="p-2 space-y-1.5">
         {/* Name + Price Row */}
         <div className="flex justify-between items-center">
           <h2 className="text-[15px] font-semibold text-gray-800">

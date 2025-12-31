@@ -159,35 +159,42 @@ exports.sendToKitchen = async (req, res) => {
 
 /* ================= UPDATE KOT STATUS (KITCHEN) ================= */
 exports.updateKotStatus = async (req, res) => {
-  try {
-    const { orderId, kotNo } = req.params;
-    const { status } = req.body;
+  const { orderId, kotNo } = req.params;
+  const { status } = req.body;
 
-    const allowed = ["pending", "preparing", "ready", "served"];
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ message: "Invalid KOT status" });
+  const order = await Order.findById(orderId).populate("tableId");
+  if (!order) return res.status(404).json({ message: "Order not found" });
+
+  const kot = order.kots.find(k => k.kotNo == kotNo);
+  if (!kot) return res.status(404).json({ message: "KOT not found" });
+
+  kot.status = status;
+
+  // 🔥 CHECK IF ALL KOTs ARE SERVED
+  const allServed = order.kots.every(
+    k => k.status === "served"
+  );
+
+  if (allServed) {
+    order.status = "completed";
+
+    if (order.tableId) {
+      order.tableId.status = "free";
+      order.tableId.currentOrderId = null;
+      await order.tableId.save();
     }
-
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    const kot = order.kots.find(k => k.kotNo === Number(kotNo));
-    if (!kot) return res.status(404).json({ message: "KOT not found" });
-
-    kot.status = status;
+  } else {
     order.status = deriveOrderStatus(order);
-    await order.save();
-
-    res.json({
-      message: `KOT ${kotNo} marked as ${status}`,
-      kot,
-      orderStatus: order.status,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
   }
+
+  await order.save();
+
+  res.json({
+    message: `KOT ${kotNo} marked ${status}`,
+    orderStatus: order.status,
+  });
 };
+
 
 /* ================= GET ORDER ================= */
 exports.getOrderById = async (req, res) => {
@@ -196,7 +203,11 @@ exports.getOrderById = async (req, res) => {
 
     const order = await Order.findById(orderId).populate({
       path: "tableId",
-      select: "tableNumber capacity status",
+      select: "tableNumber capacity status customerId area",
+      populate: [
+        { path: "customerId", select: "name phone" },
+        { path: "area", select: "name" },
+      ],
     });
 
     if (!order) {
@@ -213,19 +224,14 @@ exports.getOrderById = async (req, res) => {
 exports.getKitchenKots = async (req, res) => {
   try {
     const orders = await Order.find({})
-     const order = await Order.findById(orderId)
-  .populate({
-    path: "tableId",
-    select: "tableNumber capacity status customerId area",
-    populate: {
-      path: "customerId",
-      select: "name phone",
-    },
-    populate: {
-      path: "area",
-      select: "name",
-    },
-  })
+      .populate({
+        path: "tableId",
+        select: "tableNumber status area customerId",
+        populate: [
+          { path: "customerId", select: "name phone" },
+          { path: "area", select: "name" },
+        ],
+      })
       .lean();
 
     const kitchenKots = [];
@@ -255,6 +261,7 @@ exports.getKitchenKots = async (req, res) => {
           tableNumber: table?.tableNumber,
           tableStatus: table?.status,
           areaName: table?.area?.name || "Area",
+          customerName: table?.customerId?.name || "",
         });
       });
     });
@@ -323,55 +330,93 @@ exports.markKotReady = async (req, res) => {
 exports.generateBillAndPay = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { taxPercent = 0, discount = 0, paymentMethod = 'cash' } = req.body || {};
+    const { taxPercent = 0, servicePercent = 0, discount = 0, paymentMethod = "cash" } = req.body || {};
 
-    const order = await Order.findById(orderId).populate('tableId');
+    const order = await Order.findById(orderId).populate({
+      path: "tableId",
+      select: "tableNumber status customerId area",
+      populate: [
+        { path: "customerId", select: "name phone" },
+        { path: "area", select: "name" },
+      ],
+    });
+
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    if (order.paymentStatus === 'paid') {
-      return res.status(400).json({ message: 'Order already paid' });
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({ message: "Order already paid" });
     }
 
-    // 🔹 BILL CALCULATION
-    const subTotal = order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
-    const tax = Number(((subTotal * Number(taxPercent || 0)) / 100).toFixed(2));
+    // ❌ Prevent billing if no KOTs
+    if (!order.kots || order.kots.length === 0) {
+      return res.status(400).json({
+        message: "Cannot generate bill: no KOTs created",
+      });
+    }
+
+    /* ---------------- BILL CALCULATION ---------------- */
+    const subTotal = order.items.reduce(
+      (sum, item) => sum + item.price * item.qty,
+      0
+    );
+
+    const tax = Number(
+      ((subTotal * Number(taxPercent || 0)) / 100).toFixed(2)
+    );
+
+    const service = Number(
+      ((subTotal * Number(servicePercent || 0)) / 100).toFixed(2)
+    );
+
     const disc = Number(Number(discount || 0).toFixed(2));
-    const total = Number((subTotal + tax - disc).toFixed(2));
 
-    // 🔹 UPDATE ORDER
+    const total = Number((subTotal + tax + service - disc).toFixed(2));
+
+    /* ---------------- UPDATE ORDER ---------------- */
     order.subTotal = subTotal;
     order.tax = tax;
+    order.taxPercent = Number(taxPercent || 0);
+    order.servicePercent = Number(servicePercent || 0);
+    order.serviceAmount = service;
     order.discount = disc;
     order.totalAmount = total;
     order.paymentMethod = paymentMethod;
-    order.paymentStatus = 'paid';
-    order.status = 'completed';
+    order.paymentStatus = "paid";
+    order.status = "completed";
 
     await order.save();
 
-    // 🔹 FREE TABLE
-    if (order.tableId) {
-      order.tableId.status = 'free';
-      // align with Table.currentOrderId field
-      if (typeof order.tableId.currentOrderId !== 'undefined') {
-        order.tableId.currentOrderId = null;
-      } else if (typeof order.tableId.currentOrder !== 'undefined') {
-        order.tableId.currentOrder = null;
-      }
-      await order.tableId.save();
-    }
+    /* ---------------- FREE TABLE ---------------- */
+    // if (order.tableId) {
+    //   order.tableId.status = "free";
+    //   order.tableId.currentOrderId = null;
+    //   await order.tableId.save();
+    // }
 
     return res.json({
-      message: 'Cash payment successful',
+      message: "Payment successful",
       order,
+      billMeta: {
+        tableNumber: order.tableId?.tableNumber,
+        areaName: order.tableId?.area?.name,
+        customerName: order.tableId?.customerId?.name,
+        customerPhone: order.tableId?.customerId?.phone,
+        tax: order.tax || 0,
+        taxPercent: order.taxPercent || 0,
+        servicePercent: order.servicePercent || 0,
+        serviceAmount: order.serviceAmount || 0,
+        discount: order.discount || 0,
+        totalAmount: order.totalAmount || 0,
+      },
     });
   } catch (error) {
-    console.error('Billing error:', error);
-    res.status(500).json({ message: 'Billing failed' });
+    console.error("Billing error:", error);
+    res.status(500).json({ message: "Billing failed" });
   }
 };
+
 
 exports.cancelOrder = async (req, res) => {
   const { orderId } = req.params;

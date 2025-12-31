@@ -7,6 +7,7 @@ const STATUS_HEADER_COLOR = {
   pending: "bg-red-500",
   preparing: "bg-yellow-400",
   ready: "bg-green-500",
+  served: "bg-green-500",
 };
 
 const KotCard = ({ kot, reload }) => {
@@ -173,10 +174,16 @@ const KotCard = ({ kot, reload }) => {
           </button>
         )}
 
-        {/* READY */}
+        {/* READY / SERVED */}
         {kot.status === "ready" && (
           <p className="text-center text-green-600 font-semibold text-sm">
             ✔ Ready to Serve
+          </p>
+        )}
+
+        {kot.status === "served" && (
+          <p className="text-center text-green-600 font-semibold text-sm">
+            ✔ Served
           </p>
         )}
       </div>

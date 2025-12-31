@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
+import { toast } from "react-toastify";
 import apiClient from "../../apiclient/apiclient";
 import KotList from "./Kot/KotList";
+import { SocketContext } from "../../context/SocketContext";
 
 const KitchenDashboard = () => {
   const [kots, setKots] = useState([]);
@@ -41,6 +43,43 @@ const KitchenDashboard = () => {
   return () => clearInterval(interval);
 }, []);
 
+// --- Real-time socket listeners ---
+const socket = useContext(SocketContext);
+
+useEffect(() => {
+  if (!socket) return;
+
+  const onKitchenKotSent = (payload) => {
+    loadKots({ silent: true, force: true });
+    try {
+      toast.info(`New KOT #${payload.kotNo} received`, { autoClose: 2500 });
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
+  const onKotStatusChanged = (payload) => {
+    loadKots({ silent: true, force: true });
+    try {
+      toast.info(`KOT ${payload.kotNo} ${payload.status}`, { autoClose: 2500 });
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
+  const onKotUpdated = () => loadKots({ silent: true, force: true });
+
+  socket.on("kitchen.kot.sent", onKitchenKotSent);
+  socket.on("kot.statusChanged", onKotStatusChanged);
+  socket.on("kot.updated", onKotUpdated);
+
+  return () => {
+    socket.off("kitchen.kot.sent", onKitchenKotSent);
+    socket.off("kot.statusChanged", onKotStatusChanged);
+    socket.off("kot.updated", onKotUpdated);
+  };
+}, [socket]);
+
 
   // ✅ FILTER BY STATUS
  const pendingKots = kots.filter(k => k.status === "pending");
@@ -74,7 +113,7 @@ const readyKots = kots.filter(
       )}
 
       {/* KDS COLUMNS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
         <KotList
           title="New Orders"
           status="pending"

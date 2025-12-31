@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import apiClient from "../../apiclient/apiclient";
 import MenuItemCard from "./MenuItemCard";
 import MenuItemForm from "./MenuItemForm";
 import { Plus } from "lucide-react";
 
 const MenuItems = () => {
+  const [params] = useSearchParams();
+  const searchQuery = (params.get("q") || "").trim().toLowerCase();
+
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [editingItem, setEditingItem] = useState(null);
@@ -24,6 +28,15 @@ const MenuItems = () => {
     fetchCategories();
   }, []);
 
+  const visibleItems = useMemo(() => {
+    if (!searchQuery) return items;
+    return items.filter(i => {
+      const name = (i.name || "").toLowerCase();
+      const cat = ((i.category?.name) || i.category || "").toLowerCase();
+      return name.includes(searchQuery) || cat.includes(searchQuery);
+    });
+  }, [items, searchQuery]);
+
   return (
     <div className="p-6">
 
@@ -32,8 +45,8 @@ const MenuItems = () => {
       </h1>
 
       {/* GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map((item) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        {visibleItems.map((item) => (
           <MenuItemCard
             key={item._id}
             item={item}
