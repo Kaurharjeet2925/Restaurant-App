@@ -5,6 +5,7 @@ import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import KotHistory from "./KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
+
 import BillPrint from "./BillPrint";
 const OrderPage = () => {
   const [params] = useSearchParams();
@@ -17,6 +18,9 @@ const OrderPage = () => {
   const [categories, setCategories] = useState([]);
   const [activeCat, setActiveCat] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const searchQuery = (searchParams.get("q") || "").toLowerCase();
+
  const [checkoutMode, setCheckoutMode] = useState(false);
 
 
@@ -104,19 +108,67 @@ const fetchOrder = useCallback(async (id) => {
     loadData();
   }, [tableId, fetchOrder, navigate]);
 
-  /* ================= CATEGORIES ================= */
+  
   useEffect(() => {
     setCategories([
       ...new Set(menu.map((i) => i.category?.name || i.category).filter(Boolean)),
     ]);
   }, [menu]);
+const filteredCategories = useMemo(() => {
+  if (!searchQuery) return categories;
 
-  const filteredMenu =
-    activeCat === "all"
-      ? menu
-      : menu.filter(
-          (i) => (i.category?.name || i.category) === activeCat
-        );
+  return categories.filter((cat) =>
+    cat.toLowerCase().includes(searchQuery)
+  );
+}, [categories, searchQuery]);
+
+ const filteredMenu = useMemo(() => {
+  return menu.filter((item) => {
+    const categoryName = (item.category?.name || item.category || "").toLowerCase();
+    const itemName = item.name.toLowerCase();
+
+    const matchesCategory =
+      activeCat === "all" ||
+      (item.category?.name || item.category) === activeCat;
+
+    const matchesSearch =
+      !searchQuery ||
+      itemName.includes(searchQuery) ||
+      categoryName.includes(searchQuery);
+
+    return matchesCategory && matchesSearch;
+  });
+}, [menu, activeCat, searchQuery]);
+useEffect(() => {
+  if (!searchQuery) {
+    setActiveCat("all");
+    return;
+  }
+
+
+  const matchedCategories = categories.filter(cat =>
+    cat.toLowerCase().includes(searchQuery)
+  );
+
+ 
+  const itemMatchedCategories = menu
+    .filter(item =>
+      item.name.toLowerCase().includes(searchQuery)
+    )
+    .map(item => item.category?.name || item.category)
+    .filter(Boolean);
+
+  const uniqueMatched = Array.from(
+    new Set([...matchedCategories, ...itemMatchedCategories])
+  );
+
+  if (uniqueMatched.length === 1) {
+    setActiveCat(uniqueMatched[0]);
+  } else {
+    
+    setActiveCat("all");
+  }
+}, [searchQuery, categories, menu]);
 
   /* ================= CART ================= */
   const addItem = (item) => {
@@ -369,7 +421,7 @@ const displayTotal = useMemo(() => {
 
           <div className="flex gap-2 mb-4 flex-wrap">
             <CategoryTab label="All" active={activeCat === "all"} onClick={() => setActiveCat("all")} />
-            {categories.map((cat) => (
+            {filteredCategories.map((cat) => (
               <CategoryTab key={cat} label={cat} active={activeCat === cat} onClick={() => setActiveCat(cat)} />
             ))}
           </div>
