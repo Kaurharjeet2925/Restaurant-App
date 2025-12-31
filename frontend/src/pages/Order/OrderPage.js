@@ -27,9 +27,6 @@ const OrderPage = () => {
     [order]
   );
   
-  // stable reload function passed to children (defined after fetchOrder)
-  /* ================= GUARD ================= */
-  
   useEffect(() => {
     
     if (!tableId) {
