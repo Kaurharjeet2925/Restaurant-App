@@ -43,9 +43,12 @@ const KitchenDashboard = () => {
 
 
   // ✅ FILTER BY STATUS
-  const pendingKots = kots.filter(k => k.status === "pending");
-  const preparingKots = kots.filter(k => k.status === "preparing");
-  const readyKots = kots.filter(k => k.status === "ready");
+ const pendingKots = kots.filter(k => k.status === "pending");
+const preparingKots = kots.filter(k => k.status === "preparing");
+const readyKots = kots.filter(
+  k => k.status === "ready" || k.status === "served"
+);
+
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">

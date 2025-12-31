@@ -27,7 +27,7 @@ const kotSchema = new mongoose.Schema(
     items: [orderItemSchema],
     status: {
       type: String,
-      enum: ["pending", "preparing", "ready"],
+      enum: ["pending", "preparing", "ready", "served"],
       default: "pending",
     },
   },
@@ -50,7 +50,7 @@ const orderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "completed"],
+      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "served", "completed"],
       default: "draft",
     },
 

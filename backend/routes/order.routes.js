@@ -12,6 +12,8 @@ const {
   getKitchenKots,
   markItemPrepared,
   markKotReady,
+  generateBillAndPay,
+  cancelOrder
 } = require("../controllers/order.controller");
 
 /* ================= ORDER (WAITER / POS) ================= */
@@ -26,6 +28,8 @@ router.get("/kitchen/kots", auth, getKitchenKots);
 router.put("/orders/:orderId/kot/:kotNo/item/:index/prepared", auth, markItemPrepared);
 router.put("/orders/:orderId/kot/:kotNo/ready", auth, markKotReady);
 router.patch("/orders/:orderId/kot/:kotNo/status", auth, updateKotStatus);
+router.post("/orders/:orderId/bill", auth, generateBillAndPay);
+router.patch("/orders/:orderId/cancel", auth, cancelOrder);
 
 
 module.exports = router;

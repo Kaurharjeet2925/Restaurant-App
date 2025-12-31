@@ -3,7 +3,8 @@ const Table = require("../models/table.model");
 
 /* ================= HELPERS ================= */
 const deriveOrderStatus = (order) => {
-  if (order.kots.every(k => k.status === "ready")) return "ready";
+  // Treat 'served' the same as 'ready' for order-level status calculation
+  if (order.kots.every(k => k.status === "ready" || k.status === "served")) return "ready";
   if (order.kots.some(k => k.status === "preparing")) return "preparing";
   if (order.kots.some(k => k.status === "pending")) return "sent_to_kitchen";
   return "draft";
@@ -61,49 +62,58 @@ exports.createOrder = async (req, res) => {
 
 /* ================= ADD NEW KOT ================= */
 exports.updateOrder = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { items } = req.body;
+  const { orderId } = req.params;
+  const { items } = req.body; // MUST be only NEW items
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+  const order = await Order.findById(orderId);
+  if (!order) return res.status(404).json({ message: "Order not found" });
+
+  let addedTotal = 0;
+
+  items.forEach(i => {
+    const existing = order.items.find(
+      item => item.menuItemId.toString() === i.menuItemId.toString()
+    );
+
+    if (existing) {
+      existing.qty += i.qty;
+      existing.total += i.price * i.qty;
+    } else {
+      order.items.push({
+        ...i,
+        total: i.price * i.qty,
+        status: "pending",
+      });
     }
 
-    let subTotal = order.subTotal;
-    const formattedItems = items.map(i => {
-      const total = i.price * i.qty;
-      subTotal += total;
-      return { ...i, total };
-    });
+    addedTotal += i.price * i.qty;
+  });
 
-    const nextKotNo = order.kots.length + 1;
+  order.subTotal += addedTotal;
+  order.totalAmount = order.subTotal;
 
-    // 🔥 Keep full item history for billing
-    order.items.push(...formattedItems);
-    order.subTotal = subTotal;
-    order.totalAmount = subTotal;
+  const nextKotNo = order.kots.length + 1;
 
-    order.kots.push({
-      kotNo: nextKotNo,
-      items: formattedItems,
+  // 🔥 KOT stores ONLY NEW ITEMS
+  order.kots.push({
+    kotNo: nextKotNo,
+    items: items.map(i => ({
+      ...i,
+      total: i.price * i.qty,
       status: "pending",
-      createdAt: new Date(),
-    });
+    })),
+    status: "pending",
+  });
 
-    order.status = deriveOrderStatus(order);
-    await order.save();
+  await order.save();
 
-    res.json({
-      message: "New KOT added",
-      order,
-      kotNo: nextKotNo,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
+  res.json({
+    message: "KOT created",
+    kotNo: nextKotNo,
+  });
 };
+
+
 
 /* ================= SEND KOT TO KITCHEN ================= */
 exports.sendToKitchen = async (req, res) => {
@@ -153,7 +163,7 @@ exports.updateKotStatus = async (req, res) => {
     const { orderId, kotNo } = req.params;
     const { status } = req.body;
 
-    const allowed = ["pending", "preparing", "ready"];
+    const allowed = ["pending", "preparing", "ready", "served"];
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid KOT status" });
     }
@@ -202,43 +212,60 @@ exports.getOrderById = async (req, res) => {
 
 exports.getKitchenKots = async (req, res) => {
   try {
-    const orders = await Order.find({
-      "kots.status": { $in: ["pending", "preparing", "ready"] }
-    }).populate({
-  path: "tableId",
-  select: "tableNumber area",
-  populate: {
-    path: "area",
-    select: "name"
-  }
-});
+    const orders = await Order.find({})
+     const order = await Order.findById(orderId)
+  .populate({
+    path: "tableId",
+    select: "tableNumber capacity status customerId area",
+    populate: {
+      path: "customerId",
+      select: "name phone",
+    },
+    populate: {
+      path: "area",
+      select: "name",
+    },
+  })
+      .lean();
 
-
-    // 🔥 Flatten KOTs
     const kitchenKots = [];
 
-    orders.forEach(order => {
-      order.kots.forEach(kot => {
-        if (["pending", "preparing", "ready"].includes(kot.status)) {
-          kitchenKots.push({
-            orderId: order._id,
-            tableNumber: order.tableId?.tableNumber,
-            areaName: order.tableId?.area?.name || "Area",
-            kotNo: kot.kotNo,
-            status: kot.status,
-            items: kot.items,
-            createdAt: kot.createdAt,
-          });
+    orders.forEach((order) => {
+      const table = order.tableId;
+
+      order.kots.forEach((kot) => {
+        // ❌ REMOVE ONLY WHEN ORDER COMPLETED + TABLE FREE
+        if (
+          order.status === "completed" &&
+          table?.status === "free"
+        ) {
+          return;
         }
+
+        kitchenKots.push({
+          _id: kot._id,
+          orderId: order._id,
+
+          kotNo: kot.kotNo,
+          status: kot.status, // pending | preparing | ready | served
+          items: kot.items,
+          createdAt: kot.createdAt,
+
+          orderStatus: order.status,
+          tableNumber: table?.tableNumber,
+          tableStatus: table?.status,
+          areaName: table?.area?.name || "Area",
+        });
       });
     });
 
     res.json(kitchenKots);
   } catch (error) {
-    console.error(error);
+    console.error("Kitchen KOT error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // PUT /orders/:orderId/kot/:kotNo/item/:index/prepared
 exports.markItemPrepared = async (req, res) => {
@@ -260,7 +287,7 @@ exports.markItemPrepared = async (req, res) => {
   });
 };
 
-// PUT /orders/:orderId/kot/:kotNo/ready
+
 exports.markKotReady = async (req, res) => {
   try {
     const { orderId, kotNo } = req.params;
@@ -293,3 +320,175 @@ exports.markKotReady = async (req, res) => {
   }
 };
 
+exports.generateBillAndPay = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { taxPercent = 0, discount = 0, paymentMethod = 'cash' } = req.body || {};
+
+    const order = await Order.findById(orderId).populate('tableId');
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.paymentStatus === 'paid') {
+      return res.status(400).json({ message: 'Order already paid' });
+    }
+
+    // 🔹 BILL CALCULATION
+    const subTotal = order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const tax = Number(((subTotal * Number(taxPercent || 0)) / 100).toFixed(2));
+    const disc = Number(Number(discount || 0).toFixed(2));
+    const total = Number((subTotal + tax - disc).toFixed(2));
+
+    // 🔹 UPDATE ORDER
+    order.subTotal = subTotal;
+    order.tax = tax;
+    order.discount = disc;
+    order.totalAmount = total;
+    order.paymentMethod = paymentMethod;
+    order.paymentStatus = 'paid';
+    order.status = 'completed';
+
+    await order.save();
+
+    // 🔹 FREE TABLE
+    if (order.tableId) {
+      order.tableId.status = 'free';
+      // align with Table.currentOrderId field
+      if (typeof order.tableId.currentOrderId !== 'undefined') {
+        order.tableId.currentOrderId = null;
+      } else if (typeof order.tableId.currentOrder !== 'undefined') {
+        order.tableId.currentOrder = null;
+      }
+      await order.tableId.save();
+    }
+
+    return res.json({
+      message: 'Cash payment successful',
+      order,
+    });
+  } catch (error) {
+    console.error('Billing error:', error);
+    res.status(500).json({ message: 'Billing failed' });
+  }
+};
+
+exports.cancelOrder = async (req, res) => {
+  const { orderId } = req.params;
+
+  const order = await Order.findById(orderId).populate("tableId");
+  if (!order) return res.status(404).json({ message: "Order not found" });
+
+  // ❌ Block cancel if any KOT already started
+  const blocked = order.kots.some(k =>
+    ["preparing", "ready", "served"].includes(k.status)
+  );
+
+  if (blocked) {
+    return res.status(400).json({
+      message: "Cannot cancel. Kitchen already started."
+    });
+  }
+
+  order.status = "cancelled";
+  order.paymentStatus = "unpaid";
+
+  await order.save();
+
+  // Free table
+  if (order.tableId) {
+    order.tableId.status = "free";
+    order.tableId.currentOrderId = null;
+    await order.tableId.save();
+  }
+
+  res.json({ message: "Order cancelled", order });
+};
+exports.editKot = async (req, res) => {
+  try {
+    const { orderId, kotNo } = req.params;
+    const { items } = req.body; // full updated items array
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({ message: "Order already paid" });
+    }
+
+    const kot = order.kots.find(k => k.kotNo === Number(kotNo));
+    if (!kot) {
+      return res.status(404).json({ message: "KOT not found" });
+    }
+
+    if (kot.status !== "pending") {
+      return res.status(400).json({
+        message: "Only pending KOT can be edited",
+      });
+    }
+
+    /* ---------------- REMOVE OLD KOT ITEMS ---------------- */
+    kot.items.forEach(oldItem => {
+      const idx = order.items.findIndex(
+        i => i.menuItemId.toString() === oldItem.menuItemId.toString()
+      );
+
+      if (idx !== -1) {
+        order.items[idx].qty -= oldItem.qty;
+        order.items[idx].total -= oldItem.total;
+
+        if (order.items[idx].qty <= 0) {
+          order.items.splice(idx, 1);
+        }
+      }
+    });
+
+    /* ---------------- ADD UPDATED ITEMS ---------------- */
+    let addedTotal = 0;
+
+    items.forEach(i => {
+      const total = i.price * i.qty;
+      addedTotal += total;
+
+      const existing = order.items.find(
+        it => it.menuItemId.toString() === i.menuItemId.toString()
+      );
+
+      if (existing) {
+        existing.qty += i.qty;
+        existing.total += total;
+      } else {
+        order.items.push({
+          ...i,
+          total,
+          status: "pending",
+        });
+      }
+    });
+
+    kot.items = items.map(i => ({
+      ...i,
+      total: i.price * i.qty,
+      status: "pending",
+    }));
+
+    order.subTotal = order.items.reduce(
+      (s, i) => s + i.price * i.qty,
+      0
+    );
+    order.totalAmount = order.subTotal;
+
+    await order.save();
+
+    res.json({
+      message: `KOT ${kotNo} updated`,
+      kot,
+      order,
+    });
+  } catch (error) {
+    console.error("Edit KOT error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

@@ -63,7 +63,6 @@ exports.updateTable = async (req, res) => {
   }
 };
 
-/* ================= UPDATE TABLE STATUS ================= */
 exports.updateTableStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -110,7 +109,6 @@ exports.occupyTable = async (req, res) => {
 
     console.log(`[occupyTable] called with id=${id} body=${JSON.stringify(req.body)}`);
 
-    // Validate ObjectId early
     if (!mongoose.Types.ObjectId.isValid(id)) {
       console.warn(`[occupyTable] invalid id: ${id}`);
       return res.status(400).json({ message: "Invalid table id" });
