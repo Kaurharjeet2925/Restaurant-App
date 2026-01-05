@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Areas from "./AreaManagement/Areas";
 import UsersSettings from "./User/UsersSettings";
-
+import PortionType from "./PortionType";
 const tabs = [
   { key: "areas", label: "Areas / Floors" },
   { key: "users", label: "Users" },
+  { key: "portion-types", label: "Portion Types" },
   { key: "taxes", label: "Taxes" },
+
 ];
 
 const Settings = () => {
@@ -52,7 +54,8 @@ const Settings = () => {
       {/* CONTENT */}
       {activeTab === "areas" && <Areas />}
       {activeTab === "users" && <UsersSettings />}
-      {activeTab === "taxes" && (
+      {activeTab === "portion-types" && <PortionType />}
+       {activeTab === "taxes" && (
         <div className="text-gray-500">Taxes settings coming soon</div>
       )}
     </div>

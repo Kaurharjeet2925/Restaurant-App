@@ -97,8 +97,14 @@ const KotHistory = ({ order, reload, onEdit, onCancel }) => {
                   className="flex justify-between items-center"
                 >
                   <span>
-                    {item.name} × {item.qty}
-                  </span>
+    {item.name}
+    {item.variant && (
+      <span className="text-gray-500 text-xs ml-1">
+        ({item.variant})
+      </span>
+    )}{" "}
+    × {item.qty}
+  </span>
 
                   {item.status === "prepared" && (
                     <span className="text-xs text-green-600 font-medium">

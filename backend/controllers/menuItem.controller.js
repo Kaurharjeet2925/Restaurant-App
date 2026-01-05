@@ -5,16 +5,22 @@ const MenuItem = require("../models/menuItem.model");
 // --------------------------------------
 exports.createItem = async (req, res) => {
   try {
-    const { name, category, price } = req.body;
+    const { name, category, price, foodType, portionType } = req.body;
 
     if (!name || !category || !price) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Image path from multer
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const item = await MenuItem.create({ name, category, price, image });
+    const item = await MenuItem.create({
+      name,
+      category,
+      price,
+      foodType: foodType || "veg",
+      portionType: portionType || null, // ✅ optional
+      image,
+    });
 
     res.status(201).json({
       message: "Item added successfully",
@@ -28,6 +34,7 @@ exports.createItem = async (req, res) => {
   }
 };
 
+
 // --------------------------------------
 // GET ALL MENU ITEMS
 // --------------------------------------
@@ -35,10 +42,12 @@ exports.getItems = async (req, res) => {
   try {
     const items = await MenuItem.find()
       .populate("category", "name")
+      .populate("portionType", "pricingRule units type")
       .sort({ createdAt: -1 });
 
     res.json(items);
   } catch (error) {
+    console.error("GET MENU ERROR:", error); // 🔥 add this
     res.status(500).json({
       message: "Error fetching items",
       error: error.message,
@@ -51,11 +60,17 @@ exports.getItems = async (req, res) => {
 // --------------------------------------
 exports.updateItem = async (req, res) => {
   try {
-    const { name, category, price, available } = req.body;
+    const { name, category, price, available, foodType, portionType } = req.body;
 
-    const updateData = { name, category, price, available };
+    const updateData = {
+      name,
+      category,
+      price,
+      available,
+      foodType,
+      portionType, // ✅ added
+    };
 
-    // If new image uploaded, replace old image
     if (req.file) {
       updateData.image = `/uploads/${req.file.filename}`;
     }
@@ -79,6 +94,7 @@ exports.updateItem = async (req, res) => {
     });
   }
 };
+
 
 // --------------------------------------
 // DELETE MENU ITEM

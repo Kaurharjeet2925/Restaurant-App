@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import KotHistory from "./KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "./BillPrint";
+
 const OrderPage = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -18,6 +19,13 @@ const OrderPage = () => {
   const [activeCat, setActiveCat] = useState("all");
   const [loading, setLoading] = useState(true);
  const [checkoutMode, setCheckoutMode] = useState(false);
+const [variantModalItem, setVariantModalItem] = useState(null);
+const getDefaultUnit = (portionType) => {
+  if (!portionType || !Array.isArray(portionType.units) || portionType.units.length === 0) {
+    return null;
+  }
+  return portionType.units[0]; // compulsory unit
+};
 
 
   // ✅ SINGLE SOURCE OF TRUTH
@@ -26,9 +34,6 @@ const OrderPage = () => {
     () => (order?._id ? `ORD${String(order._id).slice(-4).toUpperCase()}` : ""),
     [order]
   );
-  
-  // stable reload function passed to children (defined after fetchOrder)
-  /* ================= GUARD ================= */
   
   useEffect(() => {
     
@@ -48,21 +53,27 @@ const fetchOrder = useCallback(async (id) => {
 
     setOrder(ord);
 
-    const grouped = ord.items.reduce((acc, i) => {
-      const key = String(i.menuItemId);
-      if (!acc[key]) {
-        acc[key] = {
-          _id: i.menuItemId,
-          name: i.name,
-          price: i.price,
-          qty: 0,
-          kotQty: 0,
-        };
-      }
-      acc[key].qty += i.qty;
-      acc[key].kotQty += i.qty;
-      return acc;
-    }, {});
+   const grouped = ord.items.reduce((acc, i) => {
+  const key = `${i.menuItemId}_${i.variant || "default"}`;
+
+  if (!acc[key]) {
+    acc[key] = {
+      cartKey: key,
+      menuItemId: i.menuItemId,
+      name: i.name,
+      basePrice: i.price,
+      selectedUnit: { name: i.variant, value: 100 },
+      qty: 0,
+      kotQty: 0,
+      portionType: null, // optional for display only
+    };
+  }
+
+  acc[key].qty += i.qty;
+  acc[key].kotQty += i.qty;
+  return acc;
+}, {});
+
 
     setCart(Object.values(grouped));
 
@@ -122,54 +133,94 @@ const fetchOrder = useCallback(async (id) => {
         );
 
   /* ================= CART ================= */
-  const addItem = (item) => {
-    setCart((prev) => {
-      const found = prev.find((i) => i._id === item._id);
-      return found
-        ? prev.map((i) =>
-            i._id === item._id ? { ...i, qty: i.qty + 1 } : i
-          )
-        : [...prev, { ...item, qty: 1, kotQty: 0 }];
-    });
-  };
+const addItem = (menuItem, unit = null) => {
+  const portion = menuItem.portionType;
+  const selectedUnit = unit || getDefaultUnit(portion);
 
-  const changeQty = (id, diff) => {
-    setCart((prev) =>
-      prev
-        .map((i) =>
-          i._id === id ? { ...i, qty: i.qty + diff } : i
-        )
-        .filter((i) => i.qty > 0)
+  if (!selectedUnit) {
+    toast.error(`Invalid portion config for ${menuItem.name}`);
+    return;
+  }
+
+  // Use same cartKey logic as fetchOrder: menuItemId + variant name
+  const cartKey = `${menuItem._id}_${selectedUnit.name || "default"}`;
+
+  setCart(prev => {
+    const existing = prev.find(
+      i => i.cartKey === cartKey
     );
-  };
 
-  // Remove item from cart
-  const removeItem = (id) => {
-    if (isLocked) {
-      toast.info("Order is locked");
-      return;
+    if (existing) {
+      return prev.map(i =>
+        i.cartKey === cartKey
+          ? { ...i, qty: i.qty + 1 }
+          : i
+      );
     }
 
-    setCart((prev) => {
-      const item = prev.find((i) => i._id === id);
-      if (!item) return prev;
+    return [
+      ...prev,
+      {
+        cartKey,
+        menuItemId: menuItem._id,
+        name: menuItem.name,
+        basePrice: menuItem.price,
+        portionType: portion,
+        selectedUnit,
+        qty: 1,
+        kotQty: 0,
+      },
+    ];
+  });
+};
 
-      // If some quantity already sent to kitchen, only remove the unsent portion
-      if (item.kotQty && item.kotQty > 0) {
-        if (item.qty === item.kotQty) {
-          toast.info("All items already sent to kitchen. Cannot remove.");
-          return prev;
-        }
+const changeQty = (cartKey, diff) => {
+  if (isLocked) return;
 
-        toast.success("Removed unsent items; remaining quantity matches sent KOT");
-        return prev.map((i) => (i._id === id ? { ...i, qty: item.kotQty } : i));
+  setCart((prev) =>
+    prev
+      .map((i) =>
+        i.cartKey === cartKey
+          ? { ...i, qty: i.qty + diff }
+          : i
+      )
+      .filter((i) => i.qty > 0)
+  );
+};
+
+
+
+
+  // Remove item from cart
+ const removeItem = (cartKey) => {
+  if (isLocked) {
+    toast.info("Order is locked");
+    return;
+  }
+
+  setCart((prev) => {
+    const item = prev.find((i) => i.cartKey === cartKey);
+    if (!item) return prev;
+
+    // 🔒 KOT safety
+    if (item.kotQty > 0) {
+      if (item.qty === item.kotQty) {
+        toast.info("Item already sent to kitchen");
+        return prev;
       }
 
-      // Otherwise remove the entire line
-      toast.success("Item removed");
-      return prev.filter((i) => i._id !== id);
-    });
-  };
+      return prev.map((i) =>
+        i.cartKey === cartKey
+          ? { ...i, qty: item.kotQty }
+          : i
+      );
+    }
+
+    return prev.filter((i) => i.cartKey !== cartKey);
+  });
+};
+
+
 const printKot = (kot) => {
   const el = document.getElementById(`kot-print-${kot.kotNo}`);
   if (!el) {
@@ -250,12 +301,14 @@ const sendAndPrintKOT = async () => {
   try {
     const newItems = cart
       .filter(i => i.qty > i.kotQty)
-      .map(i => ({
-        menuItemId: i._id,
-        name: i.name,
-        price: i.price,
-        qty: i.qty - i.kotQty,
-      }));
+     .map(i => ({
+  menuItemId: i.menuItemId,          
+  name: i.name,
+  price: calculateItemTotal(i) / i.qty, // optional but better
+  qty: i.qty - i.kotQty,
+  variant: i.selectedUnit?.name || null // optional (recommended)
+}));
+
 
     await apiClient.put(`/orders/${order._id}`, { items: newItems });
 
@@ -318,13 +371,36 @@ const handleStartCheckout = () => {
   setCheckoutMode(true);
 };
 
+const calculateItemTotal = (item) => {
+  if (!item?.selectedUnit) return 0;
+
+  // Fallback if portionType missing (from order fetch)
+  const rule = item.portionType?.pricingRule || "percentage";
+
+  if (rule === "percentage") {
+    return item.basePrice * (item.selectedUnit.value / 100) * item.qty;
+  }
+
+  if (rule === "per_unit") {
+    return item.selectedUnit.value * item.qty;
+  }
+
+  return 0;
+};
+
+
+
 const hasNewItems = useMemo(
   () => cart.some(i => i.qty > i.kotQty),
   [cart]
 );
 
-  const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart]);
-  const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
+const subtotal = useMemo(
+  () => cart.reduce((s, i) => s + calculateItemTotal(i), 0),
+  [cart]
+);
+
+const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
   const [servicePercent, setServicePercent] = useState(0);
   const [discount, setDiscount] = useState(0);
 
@@ -381,7 +457,29 @@ const displayTotal = useMemo(() => {
             {filteredMenu.map((item) => (
 <div
   key={item._id}
-  onClick={() => !isLocked && addItem(item)}
+onClick={() => {
+  if (isLocked) return;
+
+  const portion = item.portionType;
+
+  // Safety
+  if (!portion || !portion.units?.length) {
+    toast.error("Portion configuration missing");
+    return;
+  }
+
+  // ✅ ONLY ONE UNIT → DIRECT ADD
+  if (portion.units.length === 1) {
+    addItem(item, portion.units[0]);
+    return;
+  }
+
+  // ✅ MULTIPLE UNITS → OPEN MODAL
+  setVariantModalItem(item);
+}}
+
+
+
   className={`border rounded-xl p-3 cursor-pointer hover:shadow ${
     isLocked ? "opacity-50 pointer-events-none" : ""
   }`}
@@ -443,38 +541,36 @@ const displayTotal = useMemo(() => {
     )}
 
     {cart.map((i) => (
-      <div key={i._id} className="flex justify-between mb-3">
-        <div>
-          <div className="font-medium">{i.name}</div>
-          <div className="text-xs text-gray-500">
-            ₹{i.price} × {i.qty}
-          </div>
-        </div>
-
-        <div className="flex gap-2 items-center">
-          <Minus
-            size={14}
-            className={isLocked ? "opacity-40" : "cursor-pointer"}
-            onClick={() => !isLocked && changeQty(i._id, -1)}
-          />
-          <span>{i.qty}</span>
-          <Plus
-            size={14}
-            className={isLocked ? "opacity-40" : "cursor-pointer"}
-            onClick={() => !isLocked && changeQty(i._id, 1)}
-          />
-          <Trash2
-            size={14}
-            className={
-              isLocked
-                ? "opacity-40 text-gray-400"
-                : "text-red-500 cursor-pointer"
-            }
-            onClick={() => !isLocked && removeItem(i._id)}
-          />
-        </div>
+  <div key={i.cartKey} className="flex justify-between mb-3">
+    <div>
+      <div className="font-medium">{i.name}</div>
+      <div className="text-xs text-gray-500">
+        {i.selectedUnit.name} | ₹{calculateItemTotal(i)}
       </div>
-    ))}
+    </div>
+
+    <div className="flex items-center gap-2">
+      <Minus
+        size={16}
+        className="cursor-pointer"
+        onClick={() => changeQty(i.cartKey, -1)}
+      />
+      <span>{i.qty}</span>
+      <Plus
+        size={16}
+        className="cursor-pointer"
+        onClick={() => changeQty(i.cartKey, 1)}
+      />
+      <Trash2
+        size={16}
+        className="text-red-500 cursor-pointer"
+        onClick={() => removeItem(i.cartKey)}
+      />
+    </div>
+  </div>
+))}
+
+
 
     {/* SEND TO KITCHEN */}
    <button
@@ -491,108 +587,132 @@ const displayTotal = useMemo(() => {
 
 
     {/* KOT HISTORY (scrollable) */}
-    {!isCheckout && order && (
-      <div className="mt-4">
-        {/* <div className="text-sm font-medium mb-2">KOT History</div> */}
-        {order.kots && order.kots.length > 0 ? (
-          <div className="max-h-48 space-y-2">
-            <KotHistory order={order} reload={reloadOrder} />
-          </div>
-        ) : (
-          <p className="text-xs text-gray-400">No KOTs yet</p>
-        )}
+  {!isCheckout && order && (
+  <div className="mt-4">
+    {order.kots && order.kots.length > 0 ? (
+      <div className="space-y-3 pb-3">
+        <KotHistory order={order} reload={reloadOrder} />
       </div>
+    ) : (
+      <p className="text-xs text-gray-400">No KOTs yet</p>
     )}
+  </div>
+)}
+
+
 
     {/* CHECKOUT PANEL */}
     {isCheckout && (
-      <div className="mt-4 p-3 border rounded bg-gray-50">
-      <div className="text-sm font-medium mb-2">Bill</div>
-      
-      {/* Items */}
-      <ul className="text-sm mb-2 space-y-1 max-h-36 overflow-y-auto">
-        {cart.filter(i => i.qty > 0).map(i => (
-          <li key={i._id} className="flex justify-between">
-            <span>{i.name} × {i.qty}</span>
-            <span>₹{i.price * i.qty}</span>
-          </li>
-        ))}
-      </ul>
-      
-      {/* Subtotal */}
-      <div className="text-sm flex justify-between">
-        <span>Subtotal</span>
-        <span>₹{subtotal}</span>
-      </div>
-      
-      {/* GST */}
-      <div className="flex items-center gap-2 mt-2 text-sm">
-        <label className="text-sm">GST (%)</label>
-        <input
-          type="number"
-          min="0"
-          value={checkoutTaxPercent}
-          onChange={(e) => setCheckoutTaxPercent(Number(e.target.value || 0))}
-          className="w-20 p-1 border rounded"
-        />
-        <div className="ml-auto">Tax: ₹{Number(taxAmount % 1 === 0 ? taxAmount : taxAmount.toFixed(2))}</div>
-      </div>
-      
-      {/* Service charge (other field) */}
-      <div className="flex items-center gap-2 mt-2 text-sm">
-        <label className="text-sm">Service (%)</label>
-        <input
-          type="number"
-          min="0"
-          value={servicePercent}
-          onChange={(e) => setServicePercent(Number(e.target.value || 0))}
-          className="w-20 p-1 border rounded"
-        />
-        <div className="ml-auto">Service: ₹{Number(serviceAmount % 1 === 0 ? serviceAmount : serviceAmount.toFixed(2))}</div>
-      </div>
-      
-      {/* Discount (other field) */}
-      <div className="flex items-center gap-2 mt-2 text-sm">
-        <label className="text-sm">Discount (₹)</label>
-        <input
-          type="number"
-          min="0"
-          value={discount}
-          onChange={(e) => setDiscount(Number(e.target.value || 0))}
-          className="w-28 p-1 border rounded"
-        />
-        <div className="ml-auto">-₹{Number(discount || 0)}</div>
-      </div>
-      
-      {/* Final total */}
-      <div className="mt-3 text-lg font-bold flex justify-between">
-        <span>Total</span>
-<span>
-  ₹{Number(displayTotal % 1 === 0 ? displayTotal : displayTotal.toFixed(2))}
-</span>
-      </div>
+  <div className="mt-6 p-4 border rounded-lg bg-gray-50 space-y-3">
 
-      {(!order?.kots || order.kots.length === 0) && (
-        <p className="text-xs text-red-500 mb-2">Cannot finalize bill: no KOTs created</p>
-      )}
-
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={() => handleCashPayment(checkoutTaxPercent)}
-          disabled={!order?.kots || order.kots.length === 0}
-          className={`flex-1 py-2 rounded text-white ${(!order?.kots || order.kots.length === 0) ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#ff4d4d]'}`}
-        >
-          Mark Paid
-        </button>
-        <button
-          onClick={() => setCheckoutMode(false)}
-          className="flex-1 bg-gray-200 py-2 rounded"
-        >
-          Cancel
-        </button>
-      </div>
+    {/* HEADER */}
+    <div className="text-sm font-semibold border-b pb-2">
+      Bill Summary
     </div>
-   )}
+
+    {/* ITEMS — NO SCROLL HERE */}
+    <ul className="text-sm space-y-1">
+      {cart.filter(i => i.qty > 0).map(i => (
+        <li
+          key={i.cartKey}
+          className="flex justify-between"
+        >
+          <span>
+            {i.name} ({i.selectedUnit?.name}) × {i.qty}
+          </span>
+          <span>₹{calculateItemTotal(i)}</span>
+        </li>
+      ))}
+    </ul>
+
+    {/* SUBTOTAL */}
+    <div className="flex justify-between text-sm font-medium border-t pt-2">
+      <span>Subtotal</span>
+      <span>₹{subtotal}</span>
+    </div>
+
+    {/* GST */}
+    <div className="flex items-center gap-2 text-sm">
+      <label>GST (%)</label>
+      <input
+        type="number"
+        min="0"
+        value={checkoutTaxPercent}
+        onChange={(e) =>
+          setCheckoutTaxPercent(Number(e.target.value || 0))
+        }
+        className="w-20 p-1 border rounded"
+      />
+      <span className="ml-auto">₹{taxAmount}</span>
+    </div>
+
+    {/* SERVICE */}
+    <div className="flex items-center gap-2 text-sm">
+      <label>Service (%)</label>
+      <input
+        type="number"
+        min="0"
+        value={servicePercent}
+        onChange={(e) =>
+          setServicePercent(Number(e.target.value || 0))
+        }
+        className="w-20 p-1 border rounded"
+      />
+      <span className="ml-auto">₹{serviceAmount}</span>
+    </div>
+
+    {/* DISCOUNT */}
+    <div className="flex items-center gap-2 text-sm">
+      <label>Discount (₹)</label>
+      <input
+        type="number"
+        min="0"
+        value={discount}
+        onChange={(e) =>
+          setDiscount(Number(e.target.value || 0))
+        }
+        className="w-28 p-1 border rounded"
+      />
+      <span className="ml-auto">-₹{discount}</span>
+    </div>
+
+    {/* FINAL TOTAL */}
+    <div className="flex justify-between text-lg font-bold border-t pt-3">
+      <span>Total</span>
+      <span>₹{displayTotal}</span>
+    </div>
+
+    {/* WARNING */}
+    {(!order?.kots || order.kots.length === 0) && (
+      <p className="text-xs text-red-500">
+        Cannot checkout — no KOT created
+      </p>
+    )}
+
+    {/* ACTIONS */}
+    <div className="flex gap-2 pt-2">
+      <button
+        onClick={handleCashPayment}
+        disabled={!order?.kots || order.kots.length === 0}
+        className={`flex-1 py-2 rounded text-white ${
+          !order?.kots || order.kots.length === 0
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-[#ff4d4d]"
+        }`}
+      >
+        Mark Paid
+      </button>
+
+      <button
+        onClick={() => setCheckoutMode(false)}
+        className="flex-1 bg-gray-200 py-2 rounded"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
   </div>
 
   {/* FOOTER (FIXED) */}
@@ -653,6 +773,47 @@ const displayTotal = useMemo(() => {
     </div>
   )}
 </div>
+{variantModalItem && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white w-[320px] rounded-xl p-4">
+      <h3 className="font-semibold mb-3">
+        Select {variantModalItem.name}
+      </h3>
+
+      <div className="space-y-2">
+        {variantModalItem.portionType.units.map((unit) => (
+          <button
+            key={unit._id}
+            onClick={() => {
+              addItem(variantModalItem, unit);
+              setVariantModalItem(null);
+            }}
+            className="w-full flex justify-between border rounded-lg px-3 py-2 hover:bg-gray-100"
+          >
+            <span>{unit.name}</span>
+            <span className="font-medium">
+              ₹{
+  variantModalItem.portionType.pricingRule === "percentage"
+    ? (variantModalItem.price * unit.value) / 100
+    : unit.value
+}
+
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setVariantModalItem(null)}
+        className="mt-3 w-full text-sm text-gray-500"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
+
 
     </div>
   );

@@ -35,7 +35,10 @@ const KotPrint = ({ kot, order }) => {
 
       {kot.items.map((i, idx) => (
         <div key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>{i.name}</span>
+          <span>
+            {i.name}
+            {i.variant ? ` (${i.variant})` : ""}
+          </span>
           <span>x{i.qty}</span>
         </div>
       ))}

@@ -8,6 +8,9 @@ const orderItemSchema = new mongoose.Schema({
   },
   name: String,
   price: Number,
+  variant: {
+    type: String,
+  },
   qty: {
     type: Number,
     required: true,
@@ -60,15 +63,23 @@ const orderSchema = new mongoose.Schema(
       default: "unpaid",
     },
 
-    subTotal: Number,
-    tax: Number,
-    discount: Number,
-    totalAmount: Number,
+     subTotal: { type: Number, default: 0 },
+
+    tax: { type: Number, default: 0 },
+    taxPercent: { type: Number, default: 0 },
+
+    serviceAmount: { type: Number, default: 0 },
+    servicePercent: { type: Number, default: 0 },
+
+    discount: { type: Number, default: 0 },
+
+    totalAmount: { type: Number, default: 0 },
 
     paymentMethod: {
       type: String,
       enum: ["cash", "upi", "card"],
     },
+ 
   },
   { timestamps: true }
 );
