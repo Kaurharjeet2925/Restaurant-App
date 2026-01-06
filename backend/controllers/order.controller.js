@@ -62,56 +62,80 @@ exports.createOrder = async (req, res) => {
 
 /* ================= ADD NEW KOT ================= */
 exports.updateOrder = async (req, res) => {
-  const { orderId } = req.params;
-  const { items } = req.body; // MUST be only NEW items
+  try {
+    const { orderId } = req.params;
+    const { items } = req.body; // ONLY new items
 
-  const order = await Order.findById(orderId);
-  if (!order) return res.status(404).json({ message: "Order not found" });
-
-  let addedTotal = 0;
-
-  items.forEach(i => {
-    const existing = order.items.find(
-      item => item.menuItemId.toString() === i.menuItemId.toString()
-    );
-
-    if (existing) {
-      existing.qty += i.qty;
-      existing.total += i.price * i.qty;
-    } else {
-      order.items.push({
-        ...i,
-        total: i.price * i.qty,
-        status: "pending",
-      });
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    addedTotal += i.price * i.qty;
-  });
+    let addedTotal = 0;
 
-  order.subTotal += addedTotal;
-  order.totalAmount = order.subTotal;
+    items.forEach(i => {
+      if (!i.menuItemId || !i.variant) {
+        throw new Error("menuItemId and variant are required");
+      }
 
-  const nextKotNo = order.kots.length + 1;
+      const existing = order.items.find(item =>
+        item.menuItemId.toString() === i.menuItemId.toString() &&
+        item.variant === i.variant
+      );
 
-  // 🔥 KOT stores ONLY NEW ITEMS
-  order.kots.push({
-    kotNo: nextKotNo,
-    items: items.map(i => ({
-      ...i,
-      total: i.price * i.qty,
+      const lineTotal = i.price * i.qty;
+
+      if (existing) {
+        existing.qty += i.qty;
+        existing.total += lineTotal;
+      } else {
+        order.items.push({
+          menuItemId: i.menuItemId,
+          name: i.name,
+          price: i.price,
+          qty: i.qty,
+          variant: i.variant,
+          total: lineTotal,
+          status: "pending",
+        });
+      }
+
+      addedTotal += lineTotal;
+    });
+
+    order.subTotal = (order.subTotal || 0) + addedTotal;
+    order.totalAmount = order.subTotal;
+
+    const nextKotNo = order.kots.length + 1;
+
+    // 🔥 KOT stores ONLY NEW ITEMS
+    order.kots.push({
+      kotNo: nextKotNo,
+      items: items.map(i => ({
+        menuItemId: i.menuItemId,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        variant: i.variant,
+        total: i.price * i.qty,
+        status: "pending",
+      })),
       status: "pending",
-    })),
-    status: "pending",
-  });
+    });
 
-  await order.save();
+    await order.save();
 
-  res.json({
-    message: "KOT created",
-    kotNo: nextKotNo,
-  });
+    res.json({
+      message: "KOT created",
+      kotNo: nextKotNo,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 };
+
 
 
 

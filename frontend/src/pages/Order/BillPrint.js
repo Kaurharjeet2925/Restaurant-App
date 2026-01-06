@@ -1,4 +1,5 @@
-const BillPrint = ({ order }) => {
+const BillPrint = ({ order, billMeta }) => {
+
   const area =
     order?.area?.name ||
    order?.tableId?.area?.name ||
@@ -67,9 +68,10 @@ const BillPrint = ({ order }) => {
           key={idx}
           style={{ display: "flex", justifyContent: "space-between" }}
         >
-          <span>
-            {item.name} x{item.qty}
-          </span>
+         <span>
+  {item.name} ({item.variant}) × {item.qty}
+</span>
+
           <span>₹{formatMoney(item.price * item.qty)}</span>
         </div>
       ))}
@@ -89,12 +91,18 @@ const BillPrint = ({ order }) => {
         </div>
       )}
 
-      {(Number(order.serviceAmount || 0) > 0 || typeof order.servicePercent !== 'undefined') && (
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Service{typeof order.servicePercent !== 'undefined' ? ` (${order.servicePercent}%)` : ''}</span>
-          <span>₹{formatMoney(order.serviceAmount)}</span>
-        </div>
-      )}
+    {(Number(order.serviceAmount || billMeta?.serviceAmount || 0) > 0) && (
+  <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <span>
+      Service
+      {order?.servicePercent ? ` (${order.servicePercent}%)` : ""}
+    </span>
+    <span>
+      ₹{formatMoney(order.serviceAmount || billMeta.serviceAmount)}
+    </span>
+  </div>
+)}
+
 
       {Number(order.discount || 0) > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
