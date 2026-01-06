@@ -263,15 +263,15 @@ exports.getKitchenKots = async (req, res) => {
     orders.forEach((order) => {
       const table = order.tableId;
 
-      order.kots.forEach((kot) => {
-        // ❌ REMOVE ONLY WHEN ORDER COMPLETED + TABLE FREE
-        if (
-          order.status === "completed" &&
-          table?.status === "free"
-        ) {
-          return;
-        }
+      // ❌ REMOVE FROM KITCHEN IF ORDER COMPLETED OR TABLE FREE
+      if (
+        order.status === "completed" &&
+        table?.status === "free"
+      ) {
+        return;
+      }
 
+      order.kots.forEach((kot) => {
         kitchenKots.push({
           _id: kot._id,
           orderId: order._id,
@@ -296,7 +296,6 @@ exports.getKitchenKots = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // PUT /orders/:orderId/kot/:kotNo/item/:index/prepared
 exports.markItemPrepared = async (req, res) => {

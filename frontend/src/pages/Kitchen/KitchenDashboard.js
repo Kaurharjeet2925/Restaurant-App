@@ -6,7 +6,7 @@ import { SocketContext } from "../../context/SocketContext";
 
 const KitchenDashboard = () => {
   const [kots, setKots] = useState([]);
-  const [loading, setLoading] = useState(false);
+
 
   const lastFetchRef = React.useRef(0);
 
@@ -17,7 +17,7 @@ const KitchenDashboard = () => {
   lastFetchRef.current = now;
 
   try {
-    if (!silent) setLoading(true);
+  
 
     const res = await apiClient.get("/kitchen/kots", {
       params: { t: Date.now() } // cache buster
@@ -26,9 +26,7 @@ const KitchenDashboard = () => {
     setKots(res.data || []);
   } catch (error) {
     console.error("Failed to load KOTs", error);
-  } finally {
-    if (!silent) setLoading(false);
-  }
+  } 
 };
 
 
@@ -106,11 +104,11 @@ const readyKots = kots.filter(
       </div>
 
       {/* LOADING */}
-      {loading && (
+      {/* {loading && (
         <div className="text-sm text-gray-500 mb-3">
           Loading kitchen orders...
         </div>
-      )}
+      )} */}
 
       {/* KDS COLUMNS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
