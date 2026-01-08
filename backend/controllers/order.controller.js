@@ -28,6 +28,7 @@ exports.createOrder = async (req, res) => {
     });
 
    const order = await Order.create({
+    orderType: "dine_in",
   tableId,
   items: formattedItems,
   subTotal,
@@ -67,6 +68,9 @@ exports.updateOrder = async (req, res) => {
     const { items } = req.body; // ONLY new items
 
     const order = await Order.findById(orderId);
+if (!order.orderType) {
+  order.orderType = "dine_in"; // 🔒 safety fallback
+}
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -152,6 +156,9 @@ exports.sendToKitchen = async (req, res) => {
     }
 
     const order = await Order.findById(orderId);
+if (!order.orderType) {
+  order.orderType = "dine_in"; // 🔒 safety fallback
+}
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const kot = order.kots.find(k => k.kotNo === Number(kotNo));
@@ -186,30 +193,20 @@ exports.updateKotStatus = async (req, res) => {
   const { orderId, kotNo } = req.params;
   const { status } = req.body;
 
-  const order = await Order.findById(orderId).populate("tableId");
+ const order = await Order.findById(orderId);
+if (!order.orderType) {
+  order.orderType = "dine_in"; // 🔒 safety fallback
+}
   if (!order) return res.status(404).json({ message: "Order not found" });
 
   const kot = order.kots.find(k => k.kotNo == kotNo);
   if (!kot) return res.status(404).json({ message: "KOT not found" });
 
+  // update only KOT status
   kot.status = status;
 
-  // 🔥 CHECK IF ALL KOTs ARE SERVED
-  const allServed = order.kots.every(
-    k => k.status === "served"
-  );
 
-  if (allServed) {
-    order.status = "completed";
-
-    if (order.tableId) {
-      order.tableId.status = "free";
-      order.tableId.currentOrderId = null;
-      await order.tableId.save();
-    }
-  } else {
-    order.status = deriveOrderStatus(order);
-  }
+  order.status = deriveOrderStatus(order);
 
   await order.save();
 
@@ -218,6 +215,7 @@ exports.updateKotStatus = async (req, res) => {
     orderStatus: order.status,
   });
 };
+
 
 
 /* ================= GET ORDER ================= */
@@ -260,24 +258,18 @@ exports.getKitchenKots = async (req, res) => {
 
     const kitchenKots = [];
 
-    orders.forEach((order) => {
+  orders.forEach((order) => {
+  if (order.orderType !== "dine_in") return; 
+  if (order.status === "completed") return;
       const table = order.tableId;
 
       order.kots.forEach((kot) => {
-        // ❌ REMOVE ONLY WHEN ORDER COMPLETED + TABLE FREE
-        if (
-          order.status === "completed" &&
-          table?.status === "free"
-        ) {
-          return;
-        }
-
         kitchenKots.push({
           _id: kot._id,
           orderId: order._id,
 
           kotNo: kot.kotNo,
-          status: kot.status, // pending | preparing | ready | served
+          status: kot.status,
           items: kot.items,
           createdAt: kot.createdAt,
 
@@ -298,7 +290,7 @@ exports.getKitchenKots = async (req, res) => {
 };
 
 
-// PUT /orders/:orderId/kot/:kotNo/item/:index/prepared
+
 exports.markItemPrepared = async (req, res) => {
   const { orderId, kotNo, index } = req.params;
 
@@ -413,11 +405,11 @@ exports.generateBillAndPay = async (req, res) => {
     await order.save();
 
     /* ---------------- FREE TABLE ---------------- */
-    // if (order.tableId) {
-    //   order.tableId.status = "free";
-    //   order.tableId.currentOrderId = null;
-    //   await order.tableId.save();
-    // }
+    if (order.tableId) {
+      order.tableId.status = "free";
+      order.tableId.currentOrderId = null;
+      await order.tableId.save();
+    }
 
     return res.json({
       message: "Payment successful",
@@ -561,3 +553,158 @@ exports.editKot = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ================= COUNTER ORDER + PAY ================= */
+exports.createCounterOrderAndPay = async (req, res) => {
+  try {
+    const { items, paymentMethod = "cash" } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: "Items required" });
+    }
+
+    let subTotal = 0;
+
+    const formattedItems = items.map(i => {
+      const total = i.price * i.qty;
+      subTotal += total;
+      return {
+        ...i,
+        total,
+        status: "prepared",
+      };
+    });
+
+    const order = await Order.create({
+      orderType: "counter",     // ✅ FIX 1
+      tableId: null,            // ✅ FIX 2
+
+      items: formattedItems,
+      subTotal,
+      totalAmount: subTotal,
+
+      paymentMethod,
+      paymentStatus: "paid",
+      status: "completed",
+
+      kots: [
+        {
+          kotNo: 1,
+          items: formattedItems,
+          status: "ready",
+        },
+      ],
+    });
+
+    return res.status(201).json({
+      message: "Counter order paid",
+      order,
+    });
+  } catch (error) {
+    console.error("Counter order error:", error);
+    res.status(500).json({ message: "Counter order failed" });
+  }
+};
+
+
+exports.markDineInAsCredit = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId).populate("tableId");
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    order.paymentType = "credit";
+    order.paymentStatus = "unpaid";
+    order.dueAmount = order.totalAmount;
+    order.status = "completed";
+
+    await order.save();
+
+    // ✅ FREE TABLE
+    if (order.tableId) {
+      order.tableId.status = "free";
+      order.tableId.currentOrderId = null;
+      await order.tableId.save();
+    }
+
+    res.json({
+      message: "Order marked as credit",
+      order,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Credit failed" });
+  }
+};
+
+exports.collectCreditPayment = async (req, res) => {
+  const { orderId, amount } = req.body;
+
+  const order = await Order.findById(orderId);
+  if (!order) return res.status(404).json({ message: "Order not found" });
+
+  order.dueAmount -= amount;
+
+  if (order.dueAmount <= 0) {
+    order.paymentStatus = "paid";
+    order.dueAmount = 0;
+  } else {
+    order.paymentStatus = "partial";
+  }
+
+  await order.save();
+
+  res.json({
+    message: "Payment collected",
+    order,
+  });
+};
+
+exports.createCounterCreditOrder = async (req, res) => {
+  try {
+    const { items, customer, taxPercent = 0, discount = 0 } = req.body;
+
+    if (!items?.length) {
+      return res.status(400).json({ message: "Items required" });
+    }
+
+    let subTotal = 0;
+    const formattedItems = items.map(i => {
+      const total = i.price * i.qty;
+      subTotal += total;
+      return { ...i, total, status: "prepared" };
+    });
+
+    const tax = (subTotal * taxPercent) / 100;
+    const totalAmount = subTotal + tax - discount;
+
+    const order = await Order.create({
+      orderType: "counter",
+      customer,
+      items: formattedItems,
+      subTotal,
+      tax,
+      taxPercent,
+      discount,
+      totalAmount,
+
+      paymentType: "credit",
+      paymentStatus: "unpaid",
+      dueAmount: totalAmount,
+      status: "completed",
+
+      kots: [
+        {
+          kotNo: 1,
+          items: formattedItems,
+          status: "ready",
+        },
+      ],
+    });
+
+    res.status(201).json({ order });
+  } catch (err) {
+    res.status(500).json({ message: "Credit order failed" });
+  }
+};
+

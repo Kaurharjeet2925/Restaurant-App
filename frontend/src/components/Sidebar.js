@@ -13,8 +13,13 @@ import {
 
 const menu = [
   { icon: <Home size={20} />, label: "Dashboard", path: "/dashboard" },
-  { icon: <TableIcon size={20} />, label: "Tables", path: "/tables" },
-  { icon: <ShoppingBag size={20} />, label: "Orders", path: "/orders" },
+
+  // ✅ DINE-IN (was Tables)
+  { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+
+  // ✅ COUNTER (was Orders)
+  { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
+
   { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
   { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
   { icon: <List size={20} />, label: "Categories", path: "/categories" },

@@ -14,6 +14,8 @@ import "react-toastify/dist/ReactToastify.css";
 import OrderPage from "./pages/Order/OrderPage";
 import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 import AddUser from "./pages/settings/User/AddUser"; 
+import DailyOrderWiseReport from "./pages/Reports/DailyOrderWiseReport";
+import CounterPOS from "./pages/Order/CouterPOS";
 // 🔒 Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -106,7 +108,16 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+       <Route
+          path="/counter-pos"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <CounterPOS/>
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
         {/* Kitchen Dashboard */}
         <Route
           path="/kitchen"
@@ -149,7 +160,16 @@ function App() {
     </ProtectedRoute>
   }
 />
-
+<Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <DailyOrderWiseReport />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
 
       </Routes>
       

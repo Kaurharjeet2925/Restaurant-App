@@ -20,6 +20,7 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(true);
  const [checkoutMode, setCheckoutMode] = useState(false);
 const [variantModalItem, setVariantModalItem] = useState(null);
+const orderType = "dine_in";
 const getDefaultUnit = (portionType) => {
   if (!portionType || !Array.isArray(portionType.units) || portionType.units.length === 0) {
     return null;
@@ -310,7 +311,7 @@ const sendAndPrintKOT = async () => {
 }));
 
 
-    await apiClient.put(`/orders/${order._id}`, { items: newItems });
+    await apiClient.put(`/orders/${order._id}`, { orderType, items: newItems });
 
     // Lock local cart
     setCart(prev => prev.map(i => ({ ...i, kotQty: i.qty })));

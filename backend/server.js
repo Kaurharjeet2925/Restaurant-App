@@ -12,8 +12,10 @@ const menuRoutes = require("./routes/menuItem.routes");
 const tableRoutes = require("./routes/table.routes");
 const CustomerRoutes = require("./routes/customer.routes");
 const AreaRoutes = require("./routes/area.routes")
+const ReportRoutes = require("./routes/report.routes");
 const PortionTypeRoutes = require("./routes/portionType.routes");
 const app = express();
+
 const server = http.createServer(app);
 
 // -------------------------------------
@@ -79,6 +81,7 @@ app.use("/api",CustomerRoutes);
 app.use("/api",AreaRoutes);
 app.use("/api",tableRoutes);
 app.use("/api", orderRoutes);
+app.use("/api", ReportRoutes);
 app.use("/api", PortionTypeRoutes);
 // -------------------------------------
 // ✅ SOCKET HANDLERS

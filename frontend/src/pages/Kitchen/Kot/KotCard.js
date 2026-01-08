@@ -2,16 +2,13 @@ import React, { useState, useEffect } from "react";
 import apiClient from "../../../apiclient/apiclient";
 import { toast } from "react-toastify";
 
-/* ================= STATUS COLORS ================= */
+/* Header colors for Pending & Preparing ONLY */
 const STATUS_HEADER_COLOR = {
-  pending: "bg-red-500",
-  preparing: "bg-yellow-400",
-  ready: "bg-green-500",
-  served: "bg-green-500",
+  pending: "bg-red-500 text-white",
+  preparing: "bg-yellow-400 text-black",
 };
 
-const KotCard = ({ kot, reload }) => {
-  /* ================= API ACTIONS ================= */
+const KotCard = ({ kot, reload, isReadyColumn = false }) => {
   const [localItems, setLocalItems] = useState(kot.items || []);
   const [updatingMap, setUpdatingMap] = useState({});
 
@@ -26,41 +23,30 @@ const KotCard = ({ kot, reload }) => {
         kotNo: kot.kotNo,
       });
       reload();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to start preparing");
+    } catch {
+      toast.error("Failed to start preparing");
     }
   };
 
   const toggleItemPrepared = async (index) => {
-    // prevent duplicate requests
     if (updatingMap[index]) return;
 
-    const prev = localItems;
-    const updated = prev.map((it, i) => (i === index ? { ...it, status: "prepared" } : it));
-    setLocalItems(updated);
     setUpdatingMap((m) => ({ ...m, [index]: true }));
 
     try {
-      const res = await apiClient.put(
+      await apiClient.put(
         `/orders/${kot.orderId}/kot/${kot.kotNo}/item/${index}/prepared`
       );
 
-      // If server returned the updated KOT, use it; otherwise rely on optimistic update
-      const serverKot = res.data?.kot;
-      if (serverKot && Array.isArray(serverKot.items)) {
-        setLocalItems(serverKot.items);
-      } else {
-        setLocalItems((prev2) => prev2.map((it, i) => (i === index ? { ...it, status: "prepared" } : it)));
-      }
+      setLocalItems((items) =>
+        items.map((it, i) =>
+          i === index ? { ...it, status: "prepared" } : it
+        )
+      );
 
-      toast.success(res.data?.message || "Item marked prepared");
-
-      // trigger parent refresh (debounced slightly to allow UI update)
       setTimeout(() => reload(), 200);
-    } catch (error) {
-      console.error("toggleItemPrepared error:", error);
-      setLocalItems(prev);
-      toast.error(error.response?.data?.message || "Failed to mark item prepared");
+    } catch {
+      toast.error("Failed to mark item prepared");
     } finally {
       setUpdatingMap((m) => {
         const copy = { ...m };
@@ -74,119 +60,114 @@ const KotCard = ({ kot, reload }) => {
     try {
       await apiClient.put(`/orders/${kot.orderId}/kot/${kot.kotNo}/ready`);
       reload();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to mark KOT ready");
+    } catch {
+      toast.error("Failed to mark KOT ready");
     }
   };
 
-  const allPrepared = localItems.length > 0 && localItems.every((i) => i.status === "prepared");
+  const allPrepared =
+    localItems.length > 0 &&
+    localItems.every((i) => i.status === "prepared");
 
-  /* ================= UI ================= */
+  const isServed = kot.status === "served";
+
   return (
-    <div className="bg-white rounded-lg shadow border overflow-hidden">
-      {/* HEADER */}
-      <div
-        className={`px-3 py-2 flex justify-between text-white text-sm 
-        ${STATUS_HEADER_COLOR[kot.status]}`}
-      >
-        <div>
-          <p className="font-semibold">
-        {kot.areaName} · Table {kot.tableNumber}
-         </p>
+    <div className="bg-white border rounded-lg overflow-hidden">
+      {/* HEADER – hidden ONLY in Ready column */}
+      {!isReadyColumn && (
+        <div
+          className={`px-3 py-2 flex justify-between text-sm ${
+            STATUS_HEADER_COLOR[kot.status] || "bg-gray-100 text-gray-700"
+          }`}
+        >
+          <div>
+            <p className="font-semibold">
+              {kot.areaName} · Table {kot.tableNumber}
+            </p>
+            <p className="text-xs">KOT #{kot.kotNo}</p>
+          </div>
 
-          <p className="text-xs">KOT #{kot.kotNo}</p>
+          <span className="text-xs">
+            {new Date(kot.createdAt).toLocaleTimeString()}
+          </span>
         </div>
+      )}
 
-        <span className="text-xs">
-          {new Date(kot.createdAt).toLocaleTimeString()}
-        </span>
+      {/* BODY – always shown */}
+      <div className="p-3 space-y-2">
+        {localItems.map((item, index) => (
+          <div
+            key={index}
+            className="flex justify-between items-center border-b pb-1 text-sm"
+          >
+            <span
+              className={
+                isServed
+                  ? "line-through text-gray-400"
+                  : "text-gray-800"
+              }
+            >
+              {item.name} x{item.qty}
+            </span>
+
+            {/* Switch ONLY in Preparing & NOT Ready column */}
+            {kot.status === "preparing" && !isReadyColumn && (
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={item.status === "prepared"}
+                  disabled={item.status === "prepared"}
+                  onChange={() => toggleItemPrepared(index)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-8 h-4 rounded-full transition ${
+                    item.status === "prepared"
+                      ? "bg-green-500"
+                      : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-3 h-3 bg-white rounded-full shadow transform transition ${
+                      item.status === "prepared"
+                        ? "translate-x-4"
+                        : "translate-x-1"
+                    }`}
+                  />
+                </div>
+              </label>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* BODY */}
-     <div className="p-3 space-y-2">
-  {localItems.map((item, index) => {
-    const isServed = kot.status === "served";
-    const isPrepared = item.status === "prepared";
+      {/* FOOTER – hidden ONLY in Ready column */}
+      {!isReadyColumn && (
+        <div className="p-3 border-t">
+          {kot.status === "pending" && (
+            <button
+              onClick={startPreparing}
+              className="w-full py-2 bg-gray-900 text-white rounded text-sm"
+            >
+              Start Preparing
+            </button>
+          )}
 
-    return (
-      <div
-        key={index}
-        className="flex justify-between items-center border-b pb-1 text-sm"
-      >
-        {/* ITEM NAME */}
-        <span className={isServed ? "line-through text-gray-400" : ""}>
-          {item.name} x{item.qty}
-        </span>
-
-        {/* SWITCH (ONLY IN PREPARING) */}
-        {kot.status === "preparing" && (
-          <label className="inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPrepared}
-              disabled={isPrepared}
-              onChange={() => toggleItemPrepared(index)}
-              className="sr-only"
-            />
-            <div
-              className={`w-9 h-5 rounded-full transition ${
-                isPrepared ? "bg-green-500" : "bg-gray-300"
+          {kot.status === "preparing" && (
+            <button
+              onClick={markKotReady}
+              disabled={!allPrepared}
+              className={`w-full py-2 rounded text-sm ${
+                allPrepared
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              <div
-                className={`w-4 h-4 bg-white rounded-full shadow transform transition ${
-                  isPrepared ? "translate-x-4" : "translate-x-1"
-                }`}
-              />
-            </div>
-          </label>
-        )}
-      </div>
-    );
-  })}
-</div>
-
-
-      {/* FOOTER */}
-      <div className="p-3 border-t">
-        {/* PENDING */}
-        {kot.status === "pending" && (
-          <button
-            onClick={startPreparing}
-            className="w-full py-2 bg-gray-900 text-white rounded text-sm"
-          >
-            Start Preparing
-          </button>
-        )}
-
-        {/* PREPARING */}
-        {kot.status === "preparing" && (
-          <button
-            onClick={markKotReady}
-            disabled={!allPrepared}
-            className={`w-full py-2 rounded text-sm ${
-              allPrepared
-                ? "bg-gray-900 text-white"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            Mark KOT Ready
-          </button>
-        )}
-
-        {/* READY / SERVED */}
-        {kot.status === "ready" && (
-          <p className="text-center text-green-600 font-semibold text-sm">
-            ✔ Ready to Serve
-          </p>
-        )}
-
-        {kot.status === "served" && (
-          <p className="text-center text-green-600 font-semibold text-sm">
-            ✔ Served
-          </p>
-        )}
-      </div>
+              Mark KOT Ready
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
