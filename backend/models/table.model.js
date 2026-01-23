@@ -2,6 +2,13 @@ const mongoose = require("mongoose");
 
 const tableSchema = new mongoose.Schema(
   {
+   tenantId: {
+  type: mongoose.Schema.Types.ObjectId,
+  required: true,
+  index: true,
+},
+
+
     tableNumber: {
       type: String,
       required: true,

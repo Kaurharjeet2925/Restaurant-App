@@ -14,7 +14,7 @@ exports.createCategory = async (req, res) => {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-    const category = await Category.create({ name: name.trim() });
+    const category = await Category.create({ name: name.trim(), tenantId: req.user.tenantId });
 
     res.status(201).json({ message: "Category added", category });
   } catch (error) {
@@ -26,7 +26,9 @@ exports.createCategory = async (req, res) => {
 // Get all categories
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const categories = await Category.find({
+      tenantId: req.user.tenantId,
+    }).sort({ createdAt: -1 });
     res.json(categories);
   } catch (error) {
     res.status(500).json({ message: "Error fetching categories", error: error.message });
@@ -36,7 +38,10 @@ exports.getCategories = async (req, res) => {
 // Delete category
 exports.deleteCategory = async (req, res) => {
   try {
-    await Category.findByIdAndDelete(req.params.id);
+    await Category.findByIdAndDelete({
+      _id: req.params.id,
+      tenantId: req.user.tenantId
+    });
     res.json({ message: "Category deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting category", error: error.message });
@@ -52,7 +57,7 @@ exports.updateCategory = async (req, res) => {
     const { name } = req.body;
 
     const category = await Category.findByIdAndUpdate(
-      req.params.id,
+      { _id: req.params.id, tenantId: req.user.tenantId },
       { name },
       { new: true, runValidators: true }
     );
