@@ -40,19 +40,27 @@ const kotSchema = new mongoose.Schema(
 /* ================= ORDER ================= */
 const orderSchema = new mongoose.Schema(
   {
+    /* 🔹 ORDER TYPE */
     orderType: {
-  type: String,
-  enum: ["dine_in", "counter"],
-  required: true,
-},
+      type: String,
+      enum: ["dine_in", "counter"],
+      required: true,
+    },
 
-tableId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Table",
-  required: function () {
-    return this.orderType === "dine_in";
-  },
-},
+    /* 🔹 TABLE (ONLY FOR DINE-IN) */
+    tableId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Table",
+      required: function () {
+        return this.orderType === "dine_in";
+      },
+    },
+
+    /* 🔹 CUSTOMER (DINE-IN OR CREDIT) */
+    customer: {
+      name: { type: String },
+      phone: { type: String },
+    },
 
     /* 🔹 BILL ITEMS */
     items: [orderItemSchema],
@@ -88,24 +96,30 @@ tableId: {
 
     /* 🔹 AMOUNTS */
     subTotal: { type: Number, default: 0 },
-
     taxPercent: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
-
     servicePercent: { type: Number, default: 0 },
     serviceAmount: { type: Number, default: 0 },
-
     discount: { type: Number, default: 0 },
-
     totalAmount: { type: Number, default: 0 },
 
-    /* 🔹 CREDIT SUPPORT */
-    dueAmount: {
-      type: Number,
-      default: 0,
-    },
+    /* 🔹 CREDIT */
+    dueAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+/* 🔐 VALIDATION: CUSTOMER REQUIRED FOR DINE-IN OR CREDIT */
+// orderSchema.pre("validate", function () {
+//   if (
+//     (this.orderType === "dine_in" || this.paymentType === "credit") &&
+//     (!this.customer?.name || !this.customer?.phone)
+//   ) {
+//     throw new Error(
+//       "Customer name and phone required for dine-in or credit order"
+//     );
+//   }
+// });
+
 
 module.exports = mongoose.model("Order", orderSchema);

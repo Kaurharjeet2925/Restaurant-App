@@ -638,27 +638,47 @@ exports.markDineInAsCredit = async (req, res) => {
 };
 
 exports.collectCreditPayment = async (req, res) => {
-  const { orderId, amount } = req.body;
+  try {
+    const { orderId, amount, paymentMethod = "cash" } = req.body;
 
-  const order = await Order.findById(orderId);
-  if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!orderId || !amount || amount <= 0) {
+      return res.status(400).json({ message: "Valid amount required" });
+    }
 
-  order.dueAmount -= amount;
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
 
-  if (order.dueAmount <= 0) {
-    order.paymentStatus = "paid";
-    order.dueAmount = 0;
-  } else {
-    order.paymentStatus = "partial";
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({ message: "Order already fully paid" });
+    }
+
+    if (amount > order.dueAmount) {
+      return res.status(400).json({
+        message: `Amount exceeds due ₹${order.dueAmount}`,
+      });
+    }
+
+    order.dueAmount -= amount;
+
+    order.paymentStatus =
+      order.dueAmount === 0 ? "paid" : "partial";
+
+    order.paymentMethod = paymentMethod;
+
+    await order.save();
+
+    res.json({
+      message: "Payment collected successfully",
+      order,
+    });
+  } catch (err) {
+    console.error("Collect credit error:", err);
+    res.status(500).json({ message: "Payment collection failed" });
   }
-
-  await order.save();
-
-  res.json({
-    message: "Payment collected",
-    order,
-  });
 };
+
 
 exports.createCounterCreditOrder = async (req, res) => {
   try {
@@ -668,6 +688,10 @@ exports.createCounterCreditOrder = async (req, res) => {
       return res.status(400).json({ message: "Items required" });
     }
 
+    if (!customer?.phone || !customer?.name) {
+      return res.status(400).json({ message: "Customer required" });
+    }
+
     let subTotal = 0;
     const formattedItems = items.map(i => {
       const total = i.price * i.qty;
@@ -675,12 +699,37 @@ exports.createCounterCreditOrder = async (req, res) => {
       return { ...i, total, status: "prepared" };
     });
 
-    const tax = (subTotal * taxPercent) / 100;
-    const totalAmount = subTotal + tax - discount;
+    const tax = Number(((subTotal * taxPercent) / 100).toFixed(2));
+    const totalAmount = Number((subTotal + tax - discount).toFixed(2));
+
+    // 🔹 previous due by phone
+   const previousDueAgg = await Order.aggregate([
+  {
+    $match: {
+      paymentType: "credit",
+      paymentStatus: { $ne: "paid" },
+      "customer.phone": customer.phone
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: "$dueAmount" }
+    }
+  }
+]);
+
+const previousDue = previousDueAgg.length
+  ? Number(previousDueAgg[0].total)
+  : 0;
+
 
     const order = await Order.create({
-      orderType: "counter",
-      customer,
+     orderType: "counter",
+  customer: {
+    name: customer.name,
+    phone: customer.phone
+  },
       items: formattedItems,
       subTotal,
       tax,
@@ -702,9 +751,22 @@ exports.createCounterCreditOrder = async (req, res) => {
       ],
     });
 
-    res.status(201).json({ order });
+    res.status(201).json({
+      message: "Counter credit order created",
+      order,
+      billMeta: {
+        previousDue,
+        currentDue: order.dueAmount,
+        totalDue: previousDue + order.dueAmount,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: "Credit order failed" });
+    console.error("Counter credit error:", err);
+    res.status(500).json({
+      message: "Credit order failed",
+      error: err.message,
+    });
   }
 };
+
 

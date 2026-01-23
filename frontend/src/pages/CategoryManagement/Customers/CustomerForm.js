@@ -17,70 +17,81 @@ const CustomerForm = ({
 
   // 🔍 Lookup by phone (ONLY for dine-in)
   const lookupByPhone = async () => {
-    if (mode !== "dine-in" || !phone) return;
+  if (!["dine-in", "counter"].includes(mode) || !phone) return;
 
-    try {
-      setLoading(true);
-      const res = await apiClient.get(`/by-phone/${phone}`);
+  try {
+    setLoading(true);
+    const res = await apiClient.get(`/by-phone/${phone}`);
 
-      if (res.data) {
-        setCustomerId(res.data._id);
-        setName(res.data.name);
-        setAddress(res.data.address || "");
-        toast.info("Existing customer found");
-      } else {
-        setCustomerId(null);
-        setName("");
-        setAddress("");
-      }
-    } catch {
-      toast.error("Customer lookup failed");
-    } finally {
-      setLoading(false);
+    if (res.data) {
+      setCustomerId(res.data._id || null);
+      setName(res.data.name || "");
+      setAddress(res.data.address || "");
+      toast.info("Existing customer found");
+    } else {
+      setCustomerId(null);
+      setName("");
+      setAddress("");
     }
-  };
+  } catch {
+    toast.error("Customer lookup failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleSave = async () => {
-    if (!name || !phone) {
-      return toast.error("Name & phone required");
-    }
+  if (!name || !phone) {
+    return toast.error("Name & phone required");
+  }
 
-    if (mode === "dine-in") {
-      let finalCustomerId = customerId;
+  // ✅ COUNTER CREDIT FLOW
+  if (mode === "counter") {
+    onDone({ name, phone });
+    close();
+    return;
+  }
 
-      if (!customerId) {
-        const res = await apiClient.post("/customers", {
-          name,
-          phone,
-          address,
-        });
-        finalCustomerId = res.data._id;
-        toast.success("Customer added");
-      }
+  // ✅ EXISTING DINE-IN FLOW (UNCHANGED)
+  if (mode === "dine-in") {
+    let finalCustomerId = customerId;
 
-      onDone(finalCustomerId);
-      close();
-      return;
-    }
-
-    if (customerId) {
-      await apiClient.put(`/customers/${customerId}`, {
+    if (!customerId) {
+      const res = await apiClient.post("/customers", {
         name,
         phone,
         address,
       });
-      toast.success("Customer updated");
-    } else {
-      await apiClient.post("/customers", {
-        name,
-        phone,
-        address,
-      });
+      finalCustomerId = res.data._id;
       toast.success("Customer added");
     }
 
+    onDone(finalCustomerId);
     close();
-  };
+    return;
+  }
+
+  // ✅ EXISTING MANAGE FLOW (UNCHANGED)
+  if (customerId) {
+    await apiClient.put(`/customers/${customerId}`, {
+      name,
+      phone,
+      address,
+    });
+    toast.success("Customer updated");
+  } else {
+    await apiClient.post("/customers", {
+      name,
+      phone,
+      address,
+    });
+    toast.success("Customer added");
+  }
+
+  close();
+};
+
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

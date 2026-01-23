@@ -1,39 +1,31 @@
 const BillPrint = ({ order, billMeta }) => {
-
   const area =
     order?.area?.name ||
-   order?.tableId?.area?.name ||
+    order?.tableId?.area?.name ||
     "";
 
   const customerName =
     order?.tableId?.customerId?.name ||
-    order?.customerId?.name ||
-    order?.customer ||
+    order?.customer?.name ||
     "";
 
   const customerPhone =
     order?.tableId?.customerId?.phone ||
-    order?.customerId?.phone ||
+    order?.customer?.phone ||
     "";
 
-  const restaurantName =  "DICE RESTAURANT";
+  const restaurantName = "DICE RESTAURANT";
 
-  // Format money: show decimals only when needed (e.g., 15.50) otherwise whole
   const formatMoney = (value) => {
     const num = Number(value || 0);
     if (Number.isNaN(num)) return "0";
     return num % 1 === 0 ? String(num) : num.toFixed(2);
   };
 
+  const isCredit = order.paymentType === "credit";
+
   return (
-    <div
-      style={{
-        width: "280px",
-        fontFamily: "monospace",
-        fontSize: "13px",
-        lineHeight: "1.4",
-      }}
-    >
+    <div style={{ width: "280px", fontFamily: "monospace", fontSize: "13px" }}>
       <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "18px" }}>
         {restaurantName}
       </div>
@@ -45,7 +37,7 @@ const BillPrint = ({ order, billMeta }) => {
       <hr />
 
       <div>Order No: #ORD{order._id.slice(-4).toUpperCase()}</div>
-      <div>Table: {order.tableId?.tableNumber}</div>
+      {order.tableId && <div>Table: {order.tableId.tableNumber}</div>}
       {area && <div>Area: {area}</div>}
 
       {(customerName || customerPhone) && (
@@ -64,14 +56,10 @@ const BillPrint = ({ order, billMeta }) => {
 
       {/* ITEMS */}
       {order.items.map((item, idx) => (
-        <div
-          key={idx}
-          style={{ display: "flex", justifyContent: "space-between" }}
-        >
-         <span>
-  {item.name} ({item.variant}) × {item.qty}
-</span>
-
+        <div key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
+          <span>
+            {item.name} ({item.variant}) × {item.qty}
+          </span>
           <span>₹{formatMoney(item.price * item.qty)}</span>
         </div>
       ))}
@@ -84,25 +72,12 @@ const BillPrint = ({ order, billMeta }) => {
         <span>₹{formatMoney(order.subTotal)}</span>
       </div>
 
-      {(Number(order.tax || 0) > 0 || typeof order.taxPercent !== 'undefined') && (
+      {Number(order.tax || 0) > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>GST{typeof order.taxPercent !== 'undefined' ? ` (${order.taxPercent}%)` : ''}</span>
+          <span>GST ({order.taxPercent}%)</span>
           <span>₹{formatMoney(order.tax)}</span>
         </div>
       )}
-
-    {(Number(order.serviceAmount || billMeta?.serviceAmount || 0) > 0) && (
-  <div style={{ display: "flex", justifyContent: "space-between" }}>
-    <span>
-      Service
-      {order?.servicePercent ? ` (${order.servicePercent}%)` : ""}
-    </span>
-    <span>
-      ₹{formatMoney(order.serviceAmount || billMeta.serviceAmount)}
-    </span>
-  </div>
-)}
-
 
       {Number(order.discount || 0) > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -113,25 +88,44 @@ const BillPrint = ({ order, billMeta }) => {
 
       <hr />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontWeight: "bold",
-          fontSize: "15px",
-        }}
-      >
+      {/* TOTAL */}
+      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
         <span>TOTAL</span>
         <span>₹{formatMoney(order.totalAmount)}</span>
       </div>
 
+      {/* 🔥 CREDIT SECTION */}
+      {isCredit && billMeta && (
+        <>
+          <hr />
+          <div style={{ fontWeight: "bold", textAlign: "center" }}>
+            CREDIT SUMMARY
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Previous Due</span>
+            <span>₹{formatMoney(billMeta.previousDue)}</span>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Current Due</span>
+            <span>₹{formatMoney(billMeta.currentDue)}</span>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+            <span>Total Due</span>
+            <span>₹{formatMoney(billMeta.totalDue)}</span>
+          </div>
+        </>
+      )}
+
       <hr />
 
       <div style={{ textAlign: "center" }}>
-        Payment: {order.paymentMethod?.toUpperCase() || "CASH"}
+        Payment: {isCredit ? "CREDIT" : order.paymentMethod?.toUpperCase()}
       </div>
 
-      <p style={{ textAlign: "center", marginTop: "8px" }}>
+      <p style={{ textAlign: "center", marginTop: 8 }}>
         --- THANK YOU ---
       </p>
     </div>

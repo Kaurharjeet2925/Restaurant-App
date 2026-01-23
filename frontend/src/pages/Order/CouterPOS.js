@@ -4,7 +4,7 @@ import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
-
+import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 /* ================= PRINT HELPER ================= */
 const printElement = (id, title) => {
   const el = document.getElementById(id);
@@ -36,11 +36,8 @@ const CounterPOS = () => {
   const [variantItem, setVariantItem] = useState(null);
   const [taxPercent, setTaxPercent] = useState(0);
   const [showCreditModal, setShowCreditModal] = useState(false);
-const [customerPhone, setCustomerPhone] = useState("");
-const [customerName, setCustomerName] = useState("");
-const [customer, setCustomer] = useState(null);
-const [loadingCustomer, setLoadingCustomer] = useState(false);
 const [discount, setDiscount] = useState(0);
+const [billMeta, setBillMeta] = useState(null);
 
 
 const orderType = "counter";
@@ -155,6 +152,7 @@ const finalTotal = useMemo(
     toast.error("Payment failed");
   }
 };
+
 
 
   return (
@@ -297,11 +295,18 @@ const finalTotal = useMemo(
     Pay & Print
   </button>
   <button
-  onClick={() => setShowCreditModal(true)}
+  onClick={() => {
+    if (!cart.length) {
+      toast.info("Cart is empty");
+      return;
+    }
+    setShowCreditModal(true);
+  }}
   className="w-full bg-yellow-500 text-white py-3 rounded text-lg mt-2"
 >
   Pay Later (Credit)
 </button>
+
 </div>
 </div>
 
@@ -347,105 +352,52 @@ const finalTotal = useMemo(
           </div>
         </div>
       )}
-     {showCreditModal && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white w-[360px] rounded-xl p-4">
-      <h3 className="font-semibold mb-3">Customer Details</h3>
+    {showCreditModal && (
+  <CustomerForm
+    mode="counter"
+    close={() => setShowCreditModal(false)}
+    onDone={async ({ name, phone }) => {
+      try {
+        const res = await apiClient.post("/orders/counter/credit", {
+  customer: { name, phone },
+  items: cart.map((i) => ({
+    menuItemId: i.menuItemId,
+    name: i.name,
+    price: i.price,
+    qty: i.qty,
+    variant: i.unit.name,
+  })),
+  taxPercent,
+  discount,
+});
 
-      {/* PHONE */}
-      <input
-        type="text"
-        placeholder="Customer Phone"
-        value={customerPhone}
-        onChange={(e) => setCustomerPhone(e.target.value)}
-        className="w-full border p-2 rounded mb-2"
-      />
+setOrder(res.data.order);
+setBillMeta(res.data.billMeta); // 🔥 ADD THIS
+toast.success("Credit order saved");
 
-      <button
-        onClick={async () => {
-          if (!customerPhone) return toast.error("Phone required");
 
-          setLoadingCustomer(true);
-          try {
-            const res = await apiClient.get(`/customers/by-phone/${customerPhone}`);
-            setCustomer(res.data);
-            setCustomerName(res.data.name);
-            toast.success("Customer found");
-          } catch {
-            toast.info("New customer");
-            setCustomer(null);
-          }
-          setLoadingCustomer(false);
-        }}
-        className="w-full bg-gray-800 text-white py-2 rounded mb-2"
-      >
-        {loadingCustomer ? "Checking..." : "Check Customer"}
-      </button>
+        setOrder(res.data.order);
+        toast.success("Credit order saved");
 
-      {/* NAME (only for new customer) */}
-      {!customer && (
-        <input
-          type="text"
-          placeholder="Customer Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          className="w-full border p-2 rounded mb-3"
-        />
-      )}
+        setShowCreditModal(false);
 
-      {/* SAVE CREDIT */}
-      <button
-        onClick={async () => {
-          if (!customerName) return toast.error("Name required");
+        setTimeout(() => printElement("counter-kot", "KOT"), 400);
+        setTimeout(() => printElement("counter-bill", "Bill"), 1200);
 
-          try {
-            const res = await apiClient.post("/orders/counter/credit", {
-              orderType: "counter",
-              customer: {
-                phone: customerPhone,
-                name: customerName,
-              },
-              items: cart.map(i => ({
-                menuItemId: i.menuItemId,
-                name: i.name,
-                price: i.price,
-                qty: i.qty,
-                variant: i.unit.name,
-              })),
-              taxPercent,
-              discount,
-            });
-
-            setOrder(res.data.order);
-            toast.success("Credit order saved");
-
-            setTimeout(() => printElement("counter-kot", "KOT"), 400);
-            setTimeout(() => printElement("counter-bill", "Bill"), 1200);
-
-            setTimeout(() => {
-              setCart([]);
-              setOrder(null);
-            }, 2000);
-
-            setShowCreditModal(false);
-          } catch (err) {
-            toast.error("Failed to save credit");
-          }
-        }}
-        className="w-full bg-yellow-500 text-white py-3 rounded"
-      >
-        Save as Credit
-      </button>
-
-      <button
-        onClick={() => setShowCreditModal(false)}
-        className="w-full mt-2 text-sm text-gray-500"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
+        setTimeout(() => {
+          setCart([]);
+          setOrder(null);
+          setBillMeta(null); 
+        }, 2000);
+      } catch (err) {
+        toast.error(
+          err.response?.data?.message || "Failed to save credit"
+        );
+      }
+    }}
+  />
 )}
+
 
       {/* 🔥 HIDDEN PRINT */}
       <div style={{ display: "none" }}>
@@ -456,7 +408,7 @@ const finalTotal = useMemo(
         )}
         {order && (
           <div id="counter-bill">
-            <BillPrint order={order} />
+            <BillPrint order={order} billMeta={billMeta}/>
           </div>
         )}
       </div>
