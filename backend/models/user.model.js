@@ -3,11 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
-    tenantId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User", // superAdmin
-  required: true,
-},
+   
 
 
     name: { type: String, required: true },
@@ -27,10 +23,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/**
- * ✅ SAFEST PASSWORD HASHING
- * No next(), no async → cannot fail
- */
 userSchema.pre("save", function () {
   if (!this.isModified("password")) return;
 

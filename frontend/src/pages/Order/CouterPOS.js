@@ -3,6 +3,8 @@ import apiClient from "../../apiclient/apiclient";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import KotPrint from "../Kitchen/Kot/KotPrint";
+import { useSearchParams } from "react-router-dom";
+
 import BillPrint from "../Order/BillPrint";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 /* ================= PRINT HELPER ================= */
@@ -33,12 +35,14 @@ const CounterPOS = () => {
   const [activeCat, setActiveCat] = useState("all");
   const [cart, setCart] = useState([]);
   const [order, setOrder] = useState(null);
+  const [params] = useSearchParams();
+const searchQuery = (params.get("q") || "").toLowerCase();
+
   const [variantItem, setVariantItem] = useState(null);
   const [taxPercent, setTaxPercent] = useState(0);
   const [showCreditModal, setShowCreditModal] = useState(false);
 const [discount, setDiscount] = useState(0);
 const [billMeta, setBillMeta] = useState(null);
-
 
 const orderType = "counter";
   /* ================= LOAD MENU ================= */
@@ -55,12 +59,40 @@ const orderType = "counter";
     });
   }, []);
 
-  const filteredMenu =
-    activeCat === "all"
-      ? menu
-      : menu.filter(
-          (i) => (i.category?.name || i.category) === activeCat
-        );
+
+const filteredMenu = menu.filter((item) => {
+  const itemName = (item.name || "").toLowerCase();
+  const categoryName =
+    (item.category?.name || item.category || "").toLowerCase();
+
+  const matchesCategoryTab =
+    activeCat === "all" ||
+    categoryName === activeCat.toLowerCase();
+
+  const matchesSearch =
+    !searchQuery ||
+    itemName.includes(searchQuery) ||
+    categoryName.includes(searchQuery);
+
+  return matchesCategoryTab && matchesSearch;
+});
+
+useEffect(() => {
+  if (!searchQuery) {
+    setActiveCat("all");
+    return;
+  }
+
+  const matchedCategory = categories.find((cat) =>
+    cat.toLowerCase().includes(searchQuery)
+  );
+
+  if (matchedCategory) {
+    setActiveCat(matchedCategory);
+  } else {
+    setActiveCat("all");
+  }
+}, [searchQuery, categories]);
 
   /* ================= CART ================= */
   const addItem = (item, unit) => {
@@ -156,14 +188,14 @@ const finalTotal = useMemo(
 
 
   return (
-    <div className="h-[calc(100vh-64px)] bg-gray-50 p-4">
-      <div className="grid grid-cols-12 gap-4 h-full">
+    <div className="h-[calc(100vh-64px)] bg-gray-50 p-2 sm:p-4">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-4 h-full">
 
         {/* MENU */}
-        <div className="col-span-8 bg-white rounded-xl p-4 overflow-y-auto">
-          <h2 className="font-semibold mb-4">Counter POS</h2>
+        <div className="md:col-span-8 col-span-1 bg-white rounded-xl p-2 sm:p-4 overflow-y-auto">
+          <h2 className="font-semibold mb-2 text-base sm:text-lg">Counter POS</h2>
 
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="flex gap-1 sm:gap-2 mb-2 sm:mb-4 flex-wrap">
             <CategoryTab
               label="All"
               active={activeCat === "all"}
@@ -179,7 +211,7 @@ const finalTotal = useMemo(
             ))}
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
             {filteredMenu.map((item) => (
               <div
                 key={item._id}
@@ -202,39 +234,39 @@ const finalTotal = useMemo(
                   <img
                     src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
                     alt={item.name}
-                    className="h-24 w-full object-cover rounded mb-2"
+                    className="h-20 sm:h-24 w-full object-cover rounded mb-1 sm:mb-2"
                   />
                 ) : (
                   <div className="h-24 bg-gray-100 rounded mb-2 flex items-center justify-center text-xs">
                     No Image
                   </div>
                 )}
-                <div className="font-medium">{item.name}</div>
-                <div className="text-red-500">₹{item.price}</div>
+                <div className="font-medium text-xs sm:text-sm">{item.name}</div>
+                <div className="text-red-500 text-xs sm:text-base">₹{item.price}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* CART */}
-        <div className="col-span-4 bg-white rounded-xl p-4 flex flex-col">
-          <h3 className="font-semibold mb-3">Bill</h3>
+        <div className="md:col-span-4 col-span-1 bg-white rounded-xl p-2 sm:p-4 flex flex-col mt-2 md:mt-0">
+          <h3 className="font-semibold mb-2 text-base sm:text-lg">Bill</h3>
 
           <div className="flex-1 overflow-y-auto">
             {cart.map((i) => (
-              <div key={i.key} className="flex justify-between mb-2">
+              <div key={i.key} className="flex justify-between mb-1 sm:mb-2">
                 <div>
-                  <div>{i.name}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs sm:text-sm">{i.name}</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">
                     {i.unit.name} × {i.qty}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Minus size={14} onClick={() => changeQty(i.key, -1)} />
-					<span>{i.qty}</span>
-                  <Plus size={14} onClick={() => changeQty(i.key, 1)} />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Minus size={12} onClick={() => changeQty(i.key, -1)} />
+				<span className="text-xs sm:text-base">{i.qty}</span>
+                  <Plus size={12} onClick={() => changeQty(i.key, 1)} />
                   <Trash2
-                    size={14}
+                    size={12}
                     onClick={() => changeQty(i.key, -i.qty)}
                   />
                 </div>
@@ -242,55 +274,55 @@ const finalTotal = useMemo(
             ))}
           </div>
 
-        <div className="mt-6 p-4 border rounded-lg bg-gray-50 space-y-3">
+        <div className="mt-4 sm:mt-6 p-2 sm:p-4 border rounded-lg bg-gray-50 space-y-2 sm:space-y-3">
 
-  <div className="text-sm font-semibold border-b pb-2">
+  <div className="text-xs sm:text-sm font-semibold border-b pb-1 sm:pb-2">
     Bill Summary
   </div>
 
   {/* SUBTOTAL */}
-  <div className="flex justify-between text-sm">
+  <div className="flex justify-between text-xs sm:text-sm">
     <span>Subtotal</span>
     <span>₹{subtotal}</span>
   </div>
 
   {/* GST */}
-  <div className="flex items-center gap-2 text-sm">
-    <label className="w-16">GST (%)</label>
+  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+    <label className="w-12 sm:w-16">GST (%)</label>
     <input
       type="number"
       min="0"
       value={taxPercent}
       onChange={(e) => setTaxPercent(Number(e.target.value || 0))}
-      className="w-20 p-1 border rounded"
+      className="w-12 sm:w-20 p-1 border rounded"
     />
     <span className="ml-auto">₹{taxAmount}</span>
   </div>
 
   {/* DISCOUNT */}
-  <div className="flex items-center gap-2 text-sm">
-    <label className="w-16">Discount</label>
+  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+    <label className="w-12 sm:w-16">Discount</label>
     <input
       type="number"
       min="0"
       value={discount}
       onChange={(e) => setDiscount(Number(e.target.value || 0))}
-      className="w-20 p-1 border rounded"
+      className="w-12 sm:w-20 p-1 border rounded"
     />
     <span className="ml-auto">-₹{discount}</span>
   </div>
 
   {/* TOTAL */}
-  <div className="flex justify-between text-lg font-bold border-t pt-3">
+  <div className="flex justify-between text-base sm:text-lg font-bold border-t pt-2 sm:pt-3">
     <span>Total</span>
     <span>₹{finalTotal}</span>
   </div>
 
   {/* PAY BUTTON */}
-  <div className="flex flex-row gap-2">
+  <div className="flex flex-row gap-1 sm:gap-2">
   <button
     onClick={payAndPrint}
-    className="w-full bg-red-500 text-white py-3 rounded text-lg mt-2"
+    className="w-full bg-red-500 text-white py-2 sm:py-3 rounded text-sm sm:text-lg mt-1 sm:mt-2"
   >
     Pay & Print
   </button>
@@ -302,7 +334,7 @@ const finalTotal = useMemo(
     }
     setShowCreditModal(true);
   }}
-  className="w-full bg-yellow-500 text-white py-3 rounded text-lg mt-2"
+  className="w-full bg-yellow-500 text-white py-2 sm:py-3 rounded text-sm sm:text-lg mt-1 sm:mt-2"
 >
   Pay Later (Credit)
 </button>
@@ -358,36 +390,39 @@ const finalTotal = useMemo(
     close={() => setShowCreditModal(false)}
     onDone={async ({ name, phone }) => {
       try {
+        // 1. Lookup customer by phone
+        let customerId = null;
+        let customerRes = await apiClient.get(`/by-phone/${phone}`);
+        if (customerRes.data && customerRes.data._id) {
+          customerId = customerRes.data._id;
+        } else {
+          // 2. Create customer if not found
+          const createRes = await apiClient.post("/customers", { name, phone });
+          customerId = createRes.data._id;
+        }
+        // 3. Post order with customerId
         const res = await apiClient.post("/orders/counter/credit", {
-  customer: { name, phone },
-  items: cart.map((i) => ({
-    menuItemId: i.menuItemId,
-    name: i.name,
-    price: i.price,
-    qty: i.qty,
-    variant: i.unit.name,
-  })),
-  taxPercent,
-  discount,
-});
-
-setOrder(res.data.order);
-setBillMeta(res.data.billMeta); // 🔥 ADD THIS
-toast.success("Credit order saved");
-
-
+          customerId,
+          items: cart.map((i) => ({
+            menuItemId: i.menuItemId,
+            name: i.name,
+            price: i.price,
+            qty: i.qty,
+            variant: i.unit.name,
+          })),
+          taxPercent,
+          discount,
+        });
         setOrder(res.data.order);
+        setBillMeta(res.data.billMeta);
         toast.success("Credit order saved");
-
         setShowCreditModal(false);
-
         setTimeout(() => printElement("counter-kot", "KOT"), 400);
         setTimeout(() => printElement("counter-bill", "Bill"), 1200);
-
         setTimeout(() => {
           setCart([]);
           setOrder(null);
-          setBillMeta(null); 
+          setBillMeta(null);
         }, 2000);
       } catch (err) {
         toast.error(

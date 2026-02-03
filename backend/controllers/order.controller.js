@@ -1,6 +1,8 @@
 const Order = require("../models/order.model");
 const Table = require("../models/table.model");
-
+const mongoose = require("mongoose");
+const Customer = require("../models/customer.model");
+const CustomerLedger = require("../models/customerLedger.model");
 /* ================= HELPERS ================= */
 const deriveOrderStatus = (order) => {
   // Treat 'served' the same as 'ready' for order-level status calculation
@@ -682,14 +684,19 @@ exports.collectCreditPayment = async (req, res) => {
 
 exports.createCounterCreditOrder = async (req, res) => {
   try {
-    const { items, customer, taxPercent = 0, discount = 0 } = req.body;
+    const { items, customerId, taxPercent = 0, discount = 0 } = req.body;
 
     if (!items?.length) {
       return res.status(400).json({ message: "Items required" });
     }
 
-    if (!customer?.phone || !customer?.name) {
-      return res.status(400).json({ message: "Customer required" });
+    if (!customerId || !mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({ message: "Valid customerId required" });
+    }
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
     }
 
     let subTotal = 0;
@@ -702,34 +709,22 @@ exports.createCounterCreditOrder = async (req, res) => {
     const tax = Number(((subTotal * taxPercent) / 100).toFixed(2));
     const totalAmount = Number((subTotal + tax - discount).toFixed(2));
 
-    // 🔹 previous due by phone
-   const previousDueAgg = await Order.aggregate([
-  {
-    $match: {
-      paymentType: "credit",
-      paymentStatus: { $ne: "paid" },
-      "customer.phone": customer.phone
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      total: { $sum: "$dueAmount" }
-    }
-  }
-]);
 
-const previousDue = previousDueAgg.length
-  ? Number(previousDueAgg[0].total)
-  : 0;
-
+    // 🔹 PREVIOUS DUE (from CustomerLedger, includes advances)
+    const lastLedger = await CustomerLedger.findOne({ customerId: customer._id })
+      .sort({ createdAt: -1 });
+    const previousDue = lastLedger ? lastLedger.balanceAfter : 0;
 
     const order = await Order.create({
-     orderType: "counter",
-  customer: {
-    name: customer.name,
-    phone: customer.phone
-  },
+      orderType: "counter",
+
+      customer: {
+  customerId: customer._id,
+  name: customer.name,
+  phone: customer.phone,
+},
+
+
       items: formattedItems,
       subTotal,
       tax,
@@ -751,7 +746,17 @@ const previousDue = previousDueAgg.length
       ],
     });
 
-    res.status(201).json({
+    // 🔥 LEDGER ENTRY (VERY IMPORTANT)
+    await CustomerLedger.create({
+      customerId: customer._id,
+      orderId: order._id,
+      debit: totalAmount,
+      credit: 0,
+      balanceAfter: previousDue + totalAmount,
+      type: "bill",
+    });
+
+    return res.status(201).json({
       message: "Counter credit order created",
       order,
       billMeta: {
@@ -768,5 +773,7 @@ const previousDue = previousDueAgg.length
     });
   }
 };
+
+
 
 

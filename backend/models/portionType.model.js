@@ -8,11 +8,7 @@ const unitSchema = new mongoose.Schema({
 
 const portionTypeSchema = new mongoose.Schema(
   {
-   tenantId: {
-  type: mongoose.Schema.Types.ObjectId,
-  required: true,
-  index: true,
-},
+  
 
     type: {
       type: String,

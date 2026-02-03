@@ -10,7 +10,7 @@ const STATUS_BADGE = {
   served: "bg-blue-100 text-blue-700",
 };
 
-const KotHistory = ({ order, reload, onEdit, onCancel }) => {
+const KotHistory = ({ order, reload, onEdit, onCancel, scrollable = true }) => {
   const markKotServed = async (kotNo) => {
     try {
       await apiClient.patch(
@@ -40,11 +40,21 @@ const KotHistory = ({ order, reload, onEdit, onCancel }) => {
   };
 
   return (
-    <div className="mt-4 border-t pt-3">
+    <div className={`"" ${
+    scrollable ? "mt-4 border-t pt-3" : ""
+  }`}>
+       
       <h3 className="font-semibold text-sm mb-3">KOT History</h3>
 
       {/* Scrollable list so the screen doesn't scroll */}
-      <div className="max-h-56 overflow-y-auto space-y-3 pr-2">
+
+  <div
+  className={`space-y-3 ${
+    scrollable ? "max-h-56 overflow-y-auto pr-2" : ""
+  }`}
+
+
+>
         {order.kots.map((kot) => (
           <div
             key={kot.kotNo}

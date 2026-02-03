@@ -1,4 +1,5 @@
 const BillPrint = ({ order, billMeta }) => {
+  if (!order) return null; //
   const area =
     order?.area?.name ||
     order?.tableId?.area?.name ||
@@ -102,10 +103,16 @@ const BillPrint = ({ order, billMeta }) => {
             CREDIT SUMMARY
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Previous Due</span>
-            <span>₹{formatMoney(billMeta.previousDue)}</span>
-          </div>
+          {(billMeta.previousDue !== 0) && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>{billMeta.previousDue > 0 ? "Previous Due" : "Advance"}</span>
+              <span>
+                {billMeta.previousDue > 0
+                  ? `₹${formatMoney(billMeta.previousDue)}`
+                  : `₹${formatMoney(Math.abs(billMeta.previousDue))}`}
+              </span>
+            </div>
+          )}
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>Current Due</span>

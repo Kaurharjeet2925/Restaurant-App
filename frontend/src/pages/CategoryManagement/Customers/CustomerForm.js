@@ -48,7 +48,7 @@ const CustomerForm = ({
 
   // ✅ COUNTER CREDIT FLOW
   if (mode === "counter") {
-    onDone({ name, phone });
+    onDone({ name, phone, address });
     close();
     return;
   }

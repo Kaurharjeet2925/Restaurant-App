@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import apiClient from "../../../apiclient/apiclient";
 import CustomerForm from "./CustomerForm";
 import { Plus } from "lucide-react";
+import CreditPaymentModal from "../../Credit/CreditPaymentModal";
 
 const Customers = () => {
+    const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [view, setView] = useState("all"); // all | credit
+  const [selectedOrder, setSelectedOrder] = useState(null);
+const [showCollectModal, setShowCollectModal] = useState(false);
+const [selectedCustomer, setSelectedCustomer] = useState(null);
+const [showPayModal, setShowPayModal] = useState(false);
 
   const fetchCustomers = async () => {
     const url =
@@ -67,7 +74,7 @@ const Customers = () => {
 
           <tbody>
             {customers.map((c) => (
-              <tr key={c._id} className="border-b hover:bg-gray-50">
+<tr key={c.customerId} className="border-b hover:bg-gray-50">
 
                 <td className="p-4">{c.name}</td>
                 <td className="p-4">{c.phone}</td>
@@ -79,8 +86,14 @@ const Customers = () => {
 
                 {/* CREDIT CUSTOMERS */}
                 {view === "credit" && (
-                  <td className="p-4 text-right font-semibold text-red-600">
-                    ₹{c.totalDue || 0}
+                  <td className="p-4 text-right font-semibold">
+                    {c.totalDue > 0 ? (
+                      <span className="text-red-600">₹{c.totalDue} Debit</span>
+                    ) : c.totalDue < 0 ? (
+                      <span className="text-green-700">₹{Math.abs(c.totalDue)} Credit</span>
+                    ) : (
+                      <span className="text-gray-500">0</span>
+                    )}
                   </td>
                 )}
 
@@ -97,7 +110,7 @@ const Customers = () => {
                       </button>
                       <button
                         onClick={async () => {
-                          await apiClient.delete(`/customers/${c._id}`);
+                          await apiClient.delete(`/customers/${c.customerId}`);
                           fetchCustomers();
                         }}
                         className="text-red-600 mx-2"
@@ -110,21 +123,27 @@ const Customers = () => {
                   {/* 🔹 CREDIT CUSTOMERS ACTIONS */}
                   {view === "credit" && (
                     <div className="flex justify-center gap-3">
-                      <button
-                        className="px-3 py-1 rounded bg-green-600 text-white text-sm"
-                        onClick={() => {
-                          // 🔥 open Pay Now modal
-                          console.log("Pay now:", c);
-                        }}
-                      >
-                        Pay Now
-                      </button>
+                     <button
+  className="px-3 py-1 rounded bg-green-600 text-white text-sm"
+ onClick={() => {
+  setSelectedCustomer({
+    customerId: c.customerId, // ✅ NOW EXISTS
+      name: c.name,
+      totalDue: c.totalDue,
+  });
+  setShowPayModal(true);
+}}
+
+>
+  Pay Now
+</button>
+
 
                       <button
                         className="px-3 py-1 rounded bg-gray-700 text-white text-sm"
                         onClick={() => {
-                          // 🔥 open View Ledger modal/page
-                          console.log("View ledger:", c);
+                          // Navigate to customer ledger page
+                          navigate(`/customers/ledger/${c.customerId}`);
                         }}
                       >
                         View
@@ -164,6 +183,16 @@ const Customers = () => {
           refresh={fetchCustomers}
         />
       )}
+  {showPayModal && selectedCustomer && (
+  <CreditPaymentModal
+    customer={selectedCustomer}
+    onClose={() => setShowPayModal(false)}
+    onSuccess={fetchCustomers}
+  />
+)}
+
+
+
     </div>
   );
 };

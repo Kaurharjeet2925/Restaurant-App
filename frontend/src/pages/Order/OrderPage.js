@@ -176,18 +176,22 @@ const addItem = (menuItem, unit = null) => {
 };
 
 const changeQty = (cartKey, diff) => {
-  if (isLocked) return;
+  setCart(prev =>
+    prev.map(i => {
+      if (i.cartKey !== cartKey) return i;
 
-  setCart((prev) =>
-    prev
-      .map((i) =>
-        i.cartKey === cartKey
-          ? { ...i, qty: i.qty + diff }
-          : i
-      )
-      .filter((i) => i.qty > 0)
+      // 🔒 DO NOT reduce below kotQty
+      const newQty = i.qty + diff;
+      if (newQty < i.kotQty) {
+        toast.info("Cannot reduce item already sent to kitchen");
+        return i;
+      }
+
+      return { ...i, qty: newQty };
+    })
   );
 };
+
 
 
 
@@ -369,8 +373,20 @@ const handleStartCheckout = () => {
     return;
   }
 
-  setCheckoutMode(true);
+  // ⚠️ WARNING ONLY (NOT BLOCKING)
+  if (hasUnsentItems) {
+    const confirmProceed = window.confirm(
+      "⚠️ Latest items are not sent to kitchen.\n\nAre you sure you want to proceed without sending the latest KOT?"
+    );
+
+    if (!confirmProceed) {
+      return; // user clicked Cancel
+    }
+  }
+
+  setCheckoutMode(true); // ✅ proceed anyway
 };
+
 
 const calculateItemTotal = (item) => {
   if (!item?.selectedUnit) return 0;
@@ -395,11 +411,24 @@ const hasNewItems = useMemo(
   () => cart.some(i => i.qty > i.kotQty),
   [cart]
 );
-
-const subtotal = useMemo(
-  () => cart.reduce((s, i) => s + calculateItemTotal(i), 0),
+const hasUnsentItems = useMemo(
+  () => cart.some(i => i.qty > i.kotQty),
   [cart]
 );
+
+const kotSubtotal = useMemo(() => {
+  return cart.reduce((sum, i) => {
+    if (i.kotQty === 0) return sum;
+
+    const itemForBill = {
+      ...i,
+      qty: i.kotQty,
+    };
+
+    return sum + calculateItemTotal(itemForBill);
+  }, 0);
+}, [cart]);
+
 
 const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
   const [servicePercent, setServicePercent] = useState(0);
@@ -407,19 +436,19 @@ const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
 
   // Compute tax/service with two-decimal precision (match backend)
   const taxAmount = useMemo(() => {
-    const t = Number(((subtotal * Number(checkoutTaxPercent || 0)) / 100).toFixed(2));
+    const t = Number(((kotSubtotal * Number(checkoutTaxPercent || 0)) / 100).toFixed(2));
     return Number.isNaN(t) ? 0 : t;
-  }, [subtotal, checkoutTaxPercent]);
+  }, [kotSubtotal, checkoutTaxPercent]);
 
   const serviceAmount = useMemo(() => {
-    const s = Number(((subtotal * Number(servicePercent || 0)) / 100).toFixed(2));
+    const s = Number(((kotSubtotal * Number(servicePercent || 0)) / 100).toFixed(2));
     return Number.isNaN(s) ? 0 : s;
-  }, [subtotal, servicePercent]);
+  }, [kotSubtotal, servicePercent]);
 
   const finalTotal = useMemo(() => {
-    const tot = Number((subtotal + taxAmount + serviceAmount - Number(discount || 0)).toFixed(2));
+    const tot = Number((kotSubtotal + taxAmount + serviceAmount - Number(discount || 0)).toFixed(2));
     return Math.max(0, tot);
-  }, [subtotal, taxAmount, serviceAmount, discount]);
+  }, [kotSubtotal, taxAmount, serviceAmount, discount]);
 
 const isPaid = order?.paymentStatus === "paid";
 const isCheckout = checkoutMode === true;
@@ -544,7 +573,14 @@ onClick={() => {
     {cart.map((i) => (
   <div key={i.cartKey} className="flex justify-between mb-3">
     <div>
-      <div className="font-medium">{i.name}</div>
+     <div className="font-medium flex items-center gap-2">
+  {i.name}
+
+  {/* 🔴 NEW ITEM DOT */}
+  {i.qty > i.kotQty && (
+    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+  )}
+</div>
       <div className="text-xs text-gray-500">
         {i.selectedUnit.name} | ₹{calculateItemTotal(i)}
       </div>
@@ -629,7 +665,7 @@ onClick={() => {
     {/* SUBTOTAL */}
     <div className="flex justify-between text-sm font-medium border-t pt-2">
       <span>Subtotal</span>
-      <span>₹{subtotal}</span>
+      <span>₹{kotSubtotal}</span>
     </div>
 
     {/* GST */}

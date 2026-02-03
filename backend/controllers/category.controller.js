@@ -14,7 +14,7 @@ exports.createCategory = async (req, res) => {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-    const category = await Category.create({ name: name.trim(), tenantId: req.user.tenantId });
+    const category = await Category.create({ name: name.trim() });
 
     res.status(201).json({ message: "Category added", category });
   } catch (error) {
@@ -26,9 +26,7 @@ exports.createCategory = async (req, res) => {
 // Get all categories
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find({
-      tenantId: req.user.tenantId,
-    }).sort({ createdAt: -1 });
+    const categories = await Category.find().sort({ createdAt: -1 });
     res.json(categories);
   } catch (error) {
     res.status(500).json({ message: "Error fetching categories", error: error.message });
@@ -40,7 +38,7 @@ exports.deleteCategory = async (req, res) => {
   try {
     await Category.findByIdAndDelete({
       _id: req.params.id,
-      tenantId: req.user.tenantId
+     
     });
     res.json({ message: "Category deleted" });
   } catch (error) {
@@ -57,7 +55,7 @@ exports.updateCategory = async (req, res) => {
     const { name } = req.body;
 
     const category = await Category.findByIdAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId },
+      { _id: req.params.id },
       { name },
       { new: true, runValidators: true }
     );

@@ -58,14 +58,15 @@ const orderSchema = new mongoose.Schema(
 
     /* 🔹 CUSTOMER (DINE-IN OR CREDIT) */
     customer: {
-      name: { type: String },
-      phone: { type: String },
-    },
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Customer",
+  },
+  name: String,
+  phone: String,
+},
 
-    /* 🔹 BILL ITEMS */
     items: [orderItemSchema],
-
-    /* 🔹 KOT HISTORY */
     kots: [kotSchema],
 
     /* 🔹 ORDER STATUS */

@@ -1,5 +1,7 @@
 const Customer = require("../models/customer.model")
 const Order = require("../models/order.model");
+const mongoose = require("mongoose");
+const CustomerLedger = require("../models/customerLedger.model")
 /* ================= CREATE ================= */
 exports.createCustomer = async (req, res) => {
   try {
@@ -85,103 +87,173 @@ exports.getCreditCustomers = async (req, res) => {
         $match: {
           paymentType: "credit",
           paymentStatus: { $ne: "paid" },
-          "customer.phone": { $exists: true }
-        }
+          "customer.customerId": { $exists: true },
+        },
       },
       {
         $group: {
-          _id: "$customer.phone",
+          _id: "$customer.customerId",
           name: { $first: "$customer.name" },
           phone: { $first: "$customer.phone" },
-          totalDue: { $sum: "$dueAmount" }
-        }
+          totalDue: { $sum: "$dueAmount" },
+        },
       },
       {
         $project: {
           _id: 0,
+          customerId: "$_id",
           name: 1,
           phone: 1,
-          totalDue: 1
-        }
-      }
+          totalDue: 1,
+        },
+      },
     ]);
 
     res.json(data);
   } catch (err) {
-    console.error("Credit customers error:", err);
     res.status(500).json({ message: "Failed to fetch credit customers" });
   }
 };
-exports.getCreditLedger = async (req, res) => {
+
+
+exports.getCustomerLedger = async (req, res) => {
   try {
-    const { phone } = req.params;
+    const { id } = req.params;
 
-    const orders = await Order.find({
-      paymentType: "credit",
-      "customer.phone": phone
-    }).sort({ createdAt: 1 });
-
-    if (!orders.length) {
-      return res.status(404).json({ message: "No credit history found" });
+    // ✅ IMPORTANT: validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid customer id",
+      });
     }
 
-    const transactions = orders.map(o => ({
-      orderId: o._id,
-      date: o.createdAt,
-      amount: o.totalAmount,
-      dueAmount: o.dueAmount
-    }));
+    const customerId = new mongoose.Types.ObjectId(id);
 
-    const totalDue = orders.reduce((s, o) => s + o.dueAmount, 0);
+    const ledger = await CustomerLedger.find({ customerId })
+      .sort({ createdAt: 1 });
 
-    res.json({
-      customer: {
-        name: orders[0].customer.name,
-        phone
-      },
-      transactions,
-      totalDue
+    let totalDebit = 0;
+    let totalCredit = 0;
+    let currentBalance = 0;
+
+    ledger.forEach((row, index) => {
+      totalDebit += row.debit;
+      totalCredit += row.credit;
+      if (index === ledger.length - 1) {
+        currentBalance = row.balanceAfter;
+      }
     });
-  } catch (err) {
-    console.error("Ledger error:", err);
-    res.status(500).json({ message: "Failed to fetch ledger" });
+
+    return res.json({
+      totalDebit,
+      totalCredit,
+      currentBalance,
+      ledger,
+    });
+  } catch (error) {
+    console.error("getCustomerLedger error:", error);
+    return res.status(500).json({
+      message: "Failed to fetch customer ledger",
+    });
   }
 };
+
+
 exports.payCreditAmount = async (req, res) => {
   try {
-    const { phone, amount } = req.body;
+    const { customerId, amount, paymentMethod = "cash", isAdvance = false } = req.body;
 
-    if (!phone || !amount || amount <= 0) {
-      return res.status(400).json({ message: "Phone & amount required" });
+    // ✅ VALIDATION
+    if (
+      !customerId ||
+      !mongoose.Types.ObjectId.isValid(customerId) ||
+      !amount ||
+      amount <= 0
+    ) {
+      return res.status(400).json({
+        message: "customerId & valid amount required",
+      });
     }
 
-    let remaining = amount;
+    let remaining = Number(amount);
 
+    // 🔥 FETCH UNPAID CREDIT ORDERS (FIFO)
     const orders = await Order.find({
       paymentType: "credit",
       paymentStatus: { $ne: "paid" },
-      "customer.phone": phone
+      "customer._id": customerId,
     }).sort({ createdAt: 1 });
 
+    let paidAmount = 0;
     for (const order of orders) {
       if (remaining <= 0) break;
 
       if (order.dueAmount <= remaining) {
         remaining -= order.dueAmount;
+        paidAmount += order.dueAmount;
         order.dueAmount = 0;
         order.paymentStatus = "paid";
       } else {
+        paidAmount += remaining;
         order.dueAmount -= remaining;
         order.paymentStatus = "partial";
         remaining = 0;
       }
 
+      order.paymentMethod = paymentMethod;
       await order.save();
     }
 
-    res.json({ message: "Payment collected successfully" });
+    // Get last balance
+    const lastLedger = await CustomerLedger.findOne({ customerId }).sort({ createdAt: -1 });
+    let lastBalance = lastLedger ? lastLedger.balanceAfter : 0;
+
+
+    // Ledger entry for payment against due
+    if (paidAmount > 0) {
+      await CustomerLedger.create({
+        customerId,
+        type: "payment",
+        credit: paidAmount,
+        balanceAfter: lastBalance - paidAmount,
+        note: `Credit payment (${paymentMethod})`,
+      });
+      lastBalance -= paidAmount;
+    }
+
+    // Ledger entry for advance
+    if (isAdvance && remaining > 0) {
+      await CustomerLedger.create({
+        customerId,
+        type: "payment",
+        credit: remaining,
+        balanceAfter: lastBalance - remaining,
+        note: `Advance payment (${paymentMethod})`,
+      });
+      lastBalance -= remaining;
+    }
+
+    // Always record payment, even if no dues or advance
+    if (paidAmount === 0 && (!isAdvance || remaining === 0)) {
+      await CustomerLedger.create({
+        customerId,
+        type: "payment",
+        credit: amount,
+        balanceAfter: lastBalance - amount,
+        note: `Payment received (${paymentMethod})`,
+      });
+      lastBalance -= amount;
+    }
+
+    return res.json({
+      message: isAdvance && remaining > 0 ? "Advance received" : "Payment collected successfully",
+      paidAmount,
+      advance: isAdvance && remaining > 0 ? remaining : 0,
+      remainingUnadjusted: 0,
+    });
   } catch (err) {
     console.error("Credit payment error:", err);
     res.status(500).json({ message: "Payment failed" });
   }
 };
+
