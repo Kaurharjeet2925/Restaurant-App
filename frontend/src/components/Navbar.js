@@ -44,7 +44,7 @@ export default function Navbar() {
   }, [q, params, setParams]);
 
   return (
-    <div className="ml-64 h-16 bg-white shadow-sm flex items-center justify-between px-6">
+    <div className=" h-16 bg-white shadow-sm flex items-center justify-between px-6">
       {/* LEFT */}
       <div className="flex items-center gap-4">
         {showSearch && (

@@ -82,7 +82,8 @@ exports.getCustomerByPhone = async (req, res) => {
 // controllers/order.controller.js
 exports.getCreditCustomers = async (req, res) => {
   try {
-    const data = await Order.aggregate([
+    // Step 1: Get all unique credit customers from orders
+    const customers = await Order.aggregate([
       {
         $match: {
           paymentType: "credit",
@@ -95,21 +96,24 @@ exports.getCreditCustomers = async (req, res) => {
           _id: "$customer.customerId",
           name: { $first: "$customer.name" },
           phone: { $first: "$customer.phone" },
-          totalDue: { $sum: "$dueAmount" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          customerId: "$_id",
-          name: 1,
-          phone: 1,
-          totalDue: 1,
         },
       },
     ]);
 
-    res.json(data);
+    // Step 2: For each customer, get their latest ledger balance
+    const results = await Promise.all(
+      customers.map(async (c) => {
+        const lastLedger = await CustomerLedger.findOne({ customerId: c._id }).sort({ createdAt: -1 });
+        return {
+          customerId: c._id,
+          name: c.name,
+          phone: c.phone,
+          currentBalance: lastLedger ? lastLedger.balanceAfter : 0,
+        };
+      })
+    );
+
+    res.json(results);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch credit customers" });
   }
@@ -254,6 +258,20 @@ exports.payCreditAmount = async (req, res) => {
   } catch (err) {
     console.error("Credit payment error:", err);
     res.status(500).json({ message: "Payment failed" });
+  }
+};
+
+exports.getCustomerById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Customer ID required" });
+
+    const customer = await Customer.findById(id);
+    if (!customer) return res.status(404).json({ message: "Customer not found" });
+
+    res.status(200).json(customer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../../apiclient/apiclient";
 import CustomerForm from "./CustomerForm";
-import { Plus } from "lucide-react";
+import { Plus, User2Icon } from "lucide-react";
 import CreditPaymentModal from "../../Credit/CreditPaymentModal";
 
 const Customers = () => {
@@ -30,14 +30,16 @@ const [showPayModal, setShowPayModal] = useState(false);
   }, [view]);
 
   return (
-    <div className="p-6">
+    <div className="py-6">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">
-          👤 {view === "all" ? "All Customers" : "Credit Customers"}
-        </h1>
-
+        <div className="flex gap-2 items-center">
+          <User2Icon size={28} className="text-gray-800" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 whitespace-nowrap">
+            {view === "all" ? "All Customers" : "Credit Customers"}
+          </h1>
+        </div>
         <button
           onClick={() =>
             setView(view === "all" ? "credit" : "all")
@@ -54,26 +56,39 @@ const [showPayModal, setShowPayModal] = useState(false);
 
       {/* TABLE */}
       <div className="bg-white rounded-xl shadow-md border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="text-left p-4">Name</th>
-              <th className="text-left p-4">Phone</th>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px]">
+            <thead className="bg-gray-50 border-b">
+  <tr>
+    <th className="text-left p-4">
+      <span className="inline sm:hidden">Name</span>
+      <span className="hidden sm:inline">Customer Name</span>
+    </th>
+    <th className="text-left p-4">
+      <span className="inline sm:hidden">Phone</span>
+      <span className="hidden sm:inline">Phone Number</span>
+    </th>
+    {view === "all" && (
+      <th className="text-left p-4">
+        <span className="inline sm:hidden">Addr</span>
+        <span className="hidden sm:inline">Address</span>
+      </th>
+    )}
+    {view === "credit" && (
+      <th className="text-right p-4">
+        <span className="inline sm:hidden">Amount</span>
+        <span className="hidden sm:inline">Current Amount</span>
+      </th>
+    )}
+    <th className="text-center p-4">
+      <span className="inline sm:hidden">Actions</span>
+      <span className="hidden sm:inline">Actions</span>
+    </th>
+  </tr>
+</thead>
 
-              {view === "all" && (
-                <th className="text-left p-4">Address</th>
-              )}
-
-              {view === "credit" && (
-                <th className="text-right p-4">Due Amount</th>
-              )}
-
-              <th className="text-center p-4">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {customers.map((c) => (
+            <tbody>
+              {customers.map((c) => (
 <tr key={c.customerId} className="border-b hover:bg-gray-50">
 
                 <td className="p-4">{c.name}</td>
@@ -87,10 +102,10 @@ const [showPayModal, setShowPayModal] = useState(false);
                 {/* CREDIT CUSTOMERS */}
                 {view === "credit" && (
                   <td className="p-4 text-right font-semibold">
-                    {c.totalDue > 0 ? (
-                      <span className="text-red-600">₹{c.totalDue} Debit</span>
-                    ) : c.totalDue < 0 ? (
-                      <span className="text-green-700">₹{Math.abs(c.totalDue)} Credit</span>
+                    {c.currentBalance > 0 ? (
+                      <span className="text-red-600">₹{c.currentBalance} Debit</span>
+                    ) : c.currentBalance < 0 ? (
+                      <span className="text-green-700">₹{Math.abs(c.currentBalance)} Credit</span>
                     ) : (
                       <span className="text-gray-500">0</span>
                     )}
@@ -110,9 +125,11 @@ const [showPayModal, setShowPayModal] = useState(false);
                       </button>
                       <button
                         onClick={async () => {
-                          await apiClient.delete(`/customers/${c.customerId}`);
-                          fetchCustomers();
-                        }}
+                          if (window.confirm("Are you sure you want to delete this customer?")) {
+    await apiClient.delete(`/customers/${c.customerId}`);
+    fetchCustomers();
+  }
+}}
                         className="text-red-600 mx-2"
                       >
                         Delete
@@ -165,6 +182,7 @@ const [showPayModal, setShowPayModal] = useState(false);
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* ➕ ADD CUSTOMER (ONLY FOR ALL) */}
       {view === "all" && (

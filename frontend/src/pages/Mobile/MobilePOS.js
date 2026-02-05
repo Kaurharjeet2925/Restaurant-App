@@ -5,6 +5,8 @@ import { ShoppingCart, X } from "lucide-react";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
+import VariantModal from "../MenuItemManaement/VariantModal"
+
 const printElement = (id, title) => {
   const el = document.getElementById(id);
   if (!el) return toast.warn(`${title} not ready`);
@@ -25,9 +27,51 @@ const printElement = (id, title) => {
   win.focus();
   win.print();
 };
+const CategoryButton = ({ label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+      active
+        ? "bg-red-500 text-white shadow-lg"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+    }`}
+  >
+    {label === "all" ? "All Items" : label}
+  </button>
+);
+const MenuItemCard = ({ item, onClick }) => (
+  <button
+    onClick={onClick}
+    className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg active:scale-95 transition-all"
+  >
+    <div className="h-20 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
+      {item.image ? (
+        <img
+          src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
+          className="h-full w-full object-cover"
+          alt={item.name}
+        />
+      ) : (
+        <div className="h-full w-full bg-gray-300" />
+      )}
+    </div>
+
+    <div className="p-2">
+      <p className="text-xs font-semibold line-clamp-2 text-gray-900">
+        {item.name}
+      </p>
+      <p className="text-sm font-bold text-red-500">
+        ₹{item.price}
+      </p>
+    </div>
+  </button>
+);
+
 const MobilePOS = () => {
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [selectedUnit, setSelectedUnit] = useState(null);
+const [variantQty, setVariantQty] = useState(1);
   const [activeCat, setActiveCat] = useState("all");
   const [cart, setCart] = useState([]);
   const [taxPercent, setTaxPercent] = useState(0);
@@ -62,16 +106,24 @@ const [discount, setDiscount] = useState(0);
         );
 
   /* ================= CART ================= */
-const addItem = (item, unit) => {
-  const key = `${item._id}_${unit.name}`;
+const addItem = (item, unit, qty = 1) => {
+  const key = `${item._id}_${unit?.name || "default"}`;
 
   setCart((prev) => {
     const existing = prev.find((i) => i.key === key);
+
     if (existing) {
       return prev.map((i) =>
-        i.key === key ? { ...i, qty: i.qty + 1 } : i
+        i.key === key ? { ...i, qty: i.qty + qty } : i
       );
     }
+
+    const price =
+      unit && item.portionType
+        ? item.portionType.pricingRule === "percentage"
+          ? Math.round((item.price * unit.value) / 100)
+          : unit.value
+        : item.price;
 
     return [
       ...prev,
@@ -79,16 +131,14 @@ const addItem = (item, unit) => {
         key,
         menuItemId: item._id,
         name: item.name,
-        price:
-          item.portionType?.pricingRule === "percentage"
-            ? (item.price * unit.value) / 100
-            : unit.value,
+        price,
         unit,
-        qty: 1,
+        qty,
       },
     ];
   });
 };
+
 
 
   const changeQty = (key, diff) => {
@@ -210,58 +260,107 @@ const payLater = async ({ name, phone, address }) => {
 };
 
 
+// all cart entries for this item
+const getItemVariants = (itemId) =>
+  cart.filter((i) => i.menuItemId === itemId);
+
+// total qty (all variants combined)
+const getItemTotalQty = (itemId) =>
+  getItemVariants(itemId).reduce((s, i) => s + i.qty, 0);
+
+// check if item has multiple variants in cart
+const hasMultipleVariantsInCart = (itemId) =>
+  getItemVariants(itemId).length > 1;
+
+const updateVariantQty = (item, unit, diff) => {
+  const key = `${item._id}_${unit.name}`;
+
+  setCart((prev) => {
+    const existing = prev.find((i) => i.key === key);
+
+    // REMOVE
+    if (existing && existing.qty + diff <= 0) {
+      return prev.filter((i) => i.key !== key);
+    }
+
+    // UPDATE
+    if (existing) {
+      return prev.map((i) =>
+        i.key === key
+          ? { ...i, qty: i.qty + diff }
+          : i
+      );
+    }
+
+    // ADD NEW
+    const price =
+      item.portionType.pricingRule === "percentage"
+        ? Math.round((item.price * unit.value) / 100)
+        : unit.value;
+
+    return [
+      ...prev,
+      {
+        key,
+        menuItemId: item._id,
+        name: item.name,
+        unit,
+        price,
+        qty: 1,
+      },
+    ];
+  });
+};
+
   return (
 <div className="bg-white flex flex-col relative w-full max-w-none">
 
   {/* ================= CATEGORIES (FIXED) ================= */}
-  <div className="sticky top-0 z-30 bg-white border-b px-4 py-3">
-    <div className="flex gap-2 overflow-x-auto no-scrollbar w-full">
-      {["all", ...categories].map((c) => (
-        <button
-          key={c}
-          onClick={() => setActiveCat(c)}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap
-            ${
-              activeCat === c
-                ? "bg-red-500 text-white"
-                : "bg-slate-100 text-slate-700"
-            }`}
-        >
-          {c === "all" ? "All" : c}
-        </button>
-      ))}
-    </div>
-  </div>
+ <div className="native-swipe gap-2 px-3 py-2 whitespace-nowrap">
+  <button
+    onClick={() => setActiveCat("all")}
+    className="shrink-0 px-4 py-2 rounded-full bg-red-500 text-white"
+  >
+    All Items
+  </button>
+
+  {categories.map((c) => (
+    <button
+      key={c}
+      onClick={() => setActiveCat(c)}
+      className="shrink-0 px-4 py-2 rounded-full bg-gray-100"
+    >
+      {c}
+    </button>
+  ))}
+</div>
+
 
   {/* ================= MENU (ONLY THIS SCROLLS) ================= */}
   <div className="flex-1 overflow-y-auto w-full">
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-4 pb-40 w-full">
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-4 pb-40 w-full">
       {filteredMenu.map((item) => (
         <div
           key={item._id}
-          className="bg-white rounded-xl overflow-hidden shadow-sm"
+          className="bg-white rounded-xl overflow-hidden border transition cursor-pointer hover:shadow-lg active:scale-95"
+          onClick={() => {
+            const portion = item.portionType;
+            // ✅ No variant → add directly
+            if (!portion || !portion.units?.length) {
+              addItem(item, null, 1);
+              return;
+            }
+            // ✅ Single unit → add directly
+            if (portion.units.length === 1) {
+              addItem(item, portion.units[0], 1);
+              return;
+            }
+            // ✅ Multiple units → open modal
+            setVariantItem(item);
+          }}
         >
           {/* IMAGE */}
-         <div
-  className="h-24 bg-slate-200 overflow-hidden"
- onClick={() => {
-  const portion = item.portionType;
-
-  if (!portion || !portion.units?.length) {
-    toast.error("Portion config missing");
-    return;
-  }
-
-  if (portion.units.length === 1) {
-    addItem(item, portion.units[0]);
-  } else {
-    setVariantItem(item); // 🔥 open modal
-  }
-}}
-
->
-
-          
+          <div className="h-20 bg-slate-200 overflow-hidden">
             {item.image ? (
               <img
                 src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
@@ -274,15 +373,98 @@ const payLater = async ({ name, phone, address }) => {
               </div>
             )}
           </div>
-
           {/* INFO */}
           <div className="p-2">
             <h3 className="text-xs font-semibold line-clamp-2">
               {item.name}
             </h3>
-            <p className="text-sm font-bold text-red-500 mt-1">
-              ₹{item.price}
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-sm font-bold text-red-500">
+                ₹{item.price}
+              </p>
+              {(() => {
+const totalQty = getItemTotalQty(item._id);
+const variantsInCart = getItemVariants(item._id);
+const hasVariants = item.portionType?.units?.length > 1;
+const multipleVariants = hasMultipleVariantsInCart(item._id);
+
+
+  // 👉 NOT ADDED YET
+if (totalQty === 0) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (hasVariants) {
+          setVariantItem(item); // open variant modal
+        } else {
+          addItem(item, null, 1);
+        }
+      }}
+      className="border border-[#ff4d4d] text-[#ff4d4d] px-3 py-1 rounded-lg text-sm font-semibold"
+    >
+      ADD
+    </button>
+  );
+}
+
+
+  // 👉 ALREADY ADDED → SHOW QTY CONTROLS
+  return (
+  <div className="flex items-center border border-[#ff4d4d] rounded-lg">
+    {/* MINUS */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+
+        if (hasVariants) {
+          if (multipleVariants) {
+            // 🔥 multiple customisations → open modal
+            setVariantItem(item);
+          } else {
+            // single variant → reduce directly
+            changeQty(variantsInCart[0].key, -1);
+          }
+        } else {
+          changeQty(variantsInCart[0].key, -1);
+        }
+      }}
+      className="px-2 text-lg text-[#ff4d4d]"
+    >
+      −
+    </button>
+
+    <span className="px-3 text-sm font-semibold">
+      {totalQty}
+    </span>
+
+    {/* PLUS */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+
+        if (hasVariants) {
+          if (multipleVariants) {
+            // 🔥 ask which customisation
+            setVariantItem(item);
+          } else {
+            // same variant → increase
+            changeQty(variantsInCart[0].key, 1);
+          }
+        } else {
+          changeQty(variantsInCart[0].key, 1);
+        }
+      }}
+      className="px-2 text-lg text-[#ff4d4d]"
+    >
+      +
+    </button>
+  </div>
+);
+
+})()}
+</div>
+
           </div>
 
     
@@ -466,43 +648,16 @@ const payLater = async ({ name, phone, address }) => {
     </>
   )}
 {variantItem && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white w-[70%] max-w-sm rounded-xl p-4">
-      <h3 className="font-semibold mb-3 text-lg">
-        Select {variantItem.name}
-      </h3>
-
-      <div className="space-y-2">
-        {variantItem.portionType.units.map((unit) => (
-          <button
-            key={unit._id || unit.name}
-            onClick={() => {
-              addItem(variantItem, unit);
-              setVariantItem(null);
-            }}
-            className="w-full flex justify-between items-center
-                       border rounded-lg px-4 py-3 text-sm"
-          >
-            <span>{unit.name}</span>
-            <span className="font-semibold text-red-500">
-              ₹
-              {variantItem.portionType.pricingRule === "percentage"
-                ? (variantItem.price * unit.value) / 100
-                : unit.value}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <button
-        onClick={() => setVariantItem(null)}
-        className="mt-4 w-full text-sm text-gray-500"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
+  <VariantModal
+    item={variantItem}
+    cart={cart}
+    onQtyChange={updateVariantQty}
+    onClose={() => setVariantItem(null)}
+  />
 )}
+
+
+
 {showCreditModal && (
   <CustomerForm
     mode="counter"

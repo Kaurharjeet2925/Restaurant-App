@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 const menu = [
-  { icon: <Home size={20} />, label: "Dashboard", path: "/dashboard" },
+  { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
   { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
   { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
   { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },

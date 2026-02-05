@@ -107,7 +107,6 @@ function App() {
             }
           />
 
-          {/* Standalone /orders for desktop direct access */}
           <Route
             path="/orders"
             element={

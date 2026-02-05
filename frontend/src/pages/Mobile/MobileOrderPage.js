@@ -7,7 +7,7 @@ import KotHistory from "../Order/KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
 import CartSheet from './CartSheet';
-
+import VariantModal from "../MenuItemManaement/VariantModal"
 // Memoized category button for performance
 const CategoryButton = memo(({ label, active, onClick }) => (
   <button
@@ -25,72 +25,72 @@ const CategoryButton = memo(({ label, active, onClick }) => (
 CategoryButton.displayName = 'CategoryButton';
 
 // Memoized menu item card for performance
-const MenuItemCard = memo(({ item, isLocked, onAddItem, onOpenVariant }) => (
-  <button
-    onClick={() => onAddItem(item, onOpenVariant)}
-    disabled={isLocked}
-    className={`bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all ${
-      isLocked ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'
-    }`}
-  >
-<div className="h-20 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
-      {item.image ? (
-        <img
-          src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
-          className="h-full w-full object-cover"
-          alt={item.name}
-          loading="lazy"
-        />
-      ) : (
-        <div className="h-full w-full bg-gray-300" />
-      )}
-    </div>
-  <div className="p-2">
-  <p className="text-xs font-semibold line-clamp-2 text-gray-900">
-    {item.name}
-  </p>
-  <p className="text-sm font-bold text-red-500 leading-tight">
-    ₹{item.price}
-  </p>
-</div>
+// const MenuItemCard = memo(({ item, isLocked, onAddItem, onOpenVariant }) => (
+//   <button
+//     onClick={() => onAddItem(item, onOpenVariant)}
+//     disabled={isLocked}
+//     className={`bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all ${
+//       isLocked ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'
+//     }`}
+//   >
+// <div className="h-20 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
+//       {item.image ? (
+//         <img
+//           src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
+//           className="h-full w-full object-cover"
+//           alt={item.name}
+//           loading="lazy"
+//         />
+//       ) : (
+//         <div className="h-full w-full bg-gray-300" />
+//       )}
+//     </div>
+//   <div className="p-2">
+//   <p className="text-xs font-semibold line-clamp-2 text-gray-900">
+//     {item.name}
+//   </p>
+//   <p className="text-sm font-bold text-red-500 leading-tight">
+//     ₹{item.price}
+//   </p>
+// </div>
 
-  </button>
-));
+//   </button>
+// ));
 
-MenuItemCard.displayName = 'MenuItemCard';
+// MenuItemCard.displayName = 'MenuItemCard';
 
-// Memoized variant modal
-const VariantModal = memo(({ item, onSelect, onClose }) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-      <div className="p-4 border-b flex justify-between items-center">
-        <h3 className="font-bold text-lg">Select Size</h3>
-        <button onClick={onClose} className="text-gray-500">
-          <X size={24} />
-        </button>
-      </div>
-      <div className="p-4 space-y-3">
-        {item.portionType.units.map((unit) => (
-          <button
-            key={unit._id}
-            onClick={() => onSelect(unit)}
-            className="w-full flex justify-between items-center border-2 border-gray-200 rounded-xl px-4 py-3 hover:border-red-500 hover:bg-red-50 transition-all"
-          >
-            <span className="font-medium text-gray-900">{unit.name}</span>
-            <span className="font-bold text-red-500">
-              ₹
-              {item.portionType.pricingRule === 'percentage'
-                ? ((item.price * unit.value) / 100).toFixed(0)
-                : unit.value}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>
-));
+// // Memoized variant modal
+// const VariantModal = memo(({ item, onSelect, onClose }) => (
+//   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+//     <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
+//       <div className="p-4 border-b flex justify-between items-center">
+//         <h3 className="font-bold text-lg">Select Size</h3>
+//         <button onClick={onClose} className="text-gray-500">
+//           <X size={24} />
+//         </button>
+//       </div>
+//       <div className="p-4 space-y-3">
+//         {item.portionType.units.map((unit) => (
+//           <button
+//             key={unit._id}
+//             onClick={() => onSelect(unit)}
+//             className="w-full flex justify-between items-center border-2 border-gray-200 rounded-xl px-4 py-3 hover:border-red-500 hover:bg-red-50 transition-all"
+//           >
+//             <span className="font-medium text-gray-900">{unit.name}</span>
+//             <span className="font-bold text-red-500">
+//               ₹
+//               {item.portionType.pricingRule === 'percentage'
+//                 ? ((item.price * unit.value) / 100).toFixed(0)
+//                 : unit.value}
+//             </span>
+//           </button>
+//         ))}
+//       </div>
+//     </div>
+//   </div>
+// ));
 
-VariantModal.displayName = 'VariantModal';
+// VariantModal.displayName = 'VariantModal';
 
 // Memoized cart item
 const CartItem = memo(({ item, onChangeQty }) => (
@@ -271,6 +271,8 @@ export default function MobileOrderPage() {
   const [showCart, setShowCart] = useState(false);
   const [showCartPage, setShowCartPage] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [variantItem, setVariantItem] = useState(null);
+
 const handlePaymentAndNavigate = async () => {
   const success = await handleCashPayment();
 
@@ -291,8 +293,6 @@ const {
   addItem,
   changeQty,
   removeItem,
-  variantModalItem,
-  setVariantModalItem,
   order,
   isLocked,
   hasNewItems,
@@ -387,31 +387,169 @@ useEffect(() => {
     );
   }
 
+const getItemVariants = (itemId) =>
+  cart.filter((i) => i.menuItemId === itemId);
+
+// total qty (all variants combined)
+const getItemTotalQty = (itemId) =>
+  getItemVariants(itemId).reduce((s, i) => s + i.qty, 0);
+
+// check if item has multiple variants in cart
+const hasMultipleVariantsInCart = (itemId) =>
+  getItemVariants(itemId).length > 1;
+
+const updateVariantQty = (item, unit, diff) => {
+  const key = `${item._id}_${unit.name}`;
+
+  const existing = cart.find((i) => i.key === key);
+
+  // ➖ decrease
+  if (existing && diff < 0) {
+    changeQty(key, -1);
+    return;
+  }
+
+  // ➕ increase existing
+  if (existing && diff > 0) {
+    changeQty(key, 1);
+    return;
+  }
+
+  // ➕ add new variant
+  if (!existing && diff > 0) {
+    addItem(item, unit, 1);
+  }
+};
+
+
+
+
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b px-4 py-4 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-          <CategoryButton label="all" active={activeCat === 'all'} onClick={() => setActiveCat('all')} />
-          {categories.map((c) => (
-            <CategoryButton key={c} label={c} active={activeCat === c} onClick={() => setActiveCat(c)} />
-          ))}
-        </div>
-      </div>
+      <div className="native-swipe gap-2 px-3 py-2 whitespace-nowrap">
+  <button
+    onClick={() => setActiveCat("all")}
+    className="shrink-0 px-4 py-2 rounded-full bg-red-500 text-white"
+  >
+    All Items
+  </button>
+
+  {categories.map((c) => (
+    <button
+      key={c}
+      onClick={() => setActiveCat(c)}
+      className="shrink-0 px-4 py-2 rounded-full bg-gray-100"
+    >
+      {c}
+    </button>
+  ))}
+</div>
+
 
       {/* Menu Grid */}
       <div className="flex-1 overflow-y-auto">
         <div className="grid sm:grid-cols-4 grid-cols-3 gap-2 p-4 pb-32">
-          {filteredMenu.map((item) => (
-            <MenuItemCard
-              key={item._id}
-              item={item}
-              isLocked={isLocked}
-              onAddItem={handleAddItem}
-              onOpenVariant={setVariantModalItem}
-            />
-          ))}
+        {filteredMenu.map((item) => {
+  const totalQty = getItemTotalQty(item._id);
+  const variantsInCart = getItemVariants(item._id);
+  const hasVariants = item.portionType?.units?.length > 1;
+  const multipleVariants = hasMultipleVariantsInCart(item._id);
+
+  return (
+    <div
+      key={item._id}
+      className="bg-white rounded-xl overflow-hidden border shadow-sm"
+    >
+      {/* IMAGE */}
+      <div
+        className="h-20 bg-slate-200 overflow-hidden cursor-pointer"
+        onClick={() => {
+          if (!hasVariants) {
+            addItem(item, null, 1);
+          } else {
+            setVariantItem(item);
+          }
+        }}
+      >
+        {item.image ? (
+          <img
+            src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
+            className="h-full w-full object-cover"
+            alt={item.name}
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-xs text-slate-500">
+            No Image
+          </div>
+        )}
+      </div>
+
+      {/* INFO */}
+      <div className="p-2">
+        <h3 className="text-xs font-semibold line-clamp-2">
+          {item.name}
+        </h3>
+
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-sm font-bold text-[#ff4d4d]">
+            ₹{item.price}
+          </p>
+
+          {/* ADD / QTY */}
+          {totalQty === 0 ? (
+            <button
+              onClick={() =>
+                hasVariants ? setVariantItem(item) : addItem(item, null, 1)
+              }
+              className="border border-[#ff4d4d] text-[#ff4d4d]
+                         px-3 py-1 rounded-lg text-sm font-semibold"
+            >
+              ADD
+            </button>
+          ) : (
+            <div className="flex items-center border border-[#ff4d4d] rounded-lg">
+              {/* MINUS */}
+              <button
+                className="px-2 text-lg text-[#ff4d4d]"
+                onClick={() => {
+                  if (hasVariants && multipleVariants) {
+                    setVariantItem(item);
+                  } else {
+                    changeQty(variantsInCart[0].key, -1);
+                  }
+                }}
+              >
+                −
+              </button>
+
+              <span className="px-3 text-sm font-semibold">
+                {totalQty}
+              </span>
+
+              {/* PLUS */}
+              <button
+                className="px-2 text-lg text-[#ff4d4d]"
+                onClick={() => {
+                  if (hasVariants) {
+                    setVariantItem(item);
+                  } else {
+                    changeQty(variantsInCart[0].key, 1);
+                  }
+                }}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
+
+
         </div>
       </div>
 
@@ -446,16 +584,16 @@ useEffect(() => {
 
 
       {/* Variant Modal */}
-      {variantModalItem && (
-        <VariantModal
-          item={variantModalItem}
-          onSelect={(unit) => {
-            addItem(variantModalItem, unit);
-            setVariantModalItem(null);
-          }}
-          onClose={() => setVariantModalItem(null)}
-        />
-      )}
+  {variantItem && (
+  <VariantModal
+    item={variantItem}
+    cart={cart}
+    onQtyChange={updateVariantQty}
+    onClose={() => setVariantItem(null)}
+  />
+)}
+
+
 
       {/* Checkout Sheet */}
    {/* {checkoutMode && (
