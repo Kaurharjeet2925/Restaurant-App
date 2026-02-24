@@ -3,7 +3,12 @@ const Area = require("../models/area.model");
 // GET ALL AREAS
 exports.getAreas = async (req, res) => {
   try {
-    const areas = await Area.find().sort({ createdAt: 1 });
+    const areas = await Area.find(
+    //  {
+    //   tenantId: req.user.tenantId,
+    // }
+
+    ).sort({ createdAt: 1 });
     res.json(areas);
   } catch (err) {
     res.status(500).json({ message: "Failed to load areas" });
@@ -13,7 +18,10 @@ exports.getAreas = async (req, res) => {
 // CREATE AREA
 exports.createArea = async (req, res) => {
   try {
-    const area = await Area.create(req.body);
+    const area = await Area.create({
+      ...req.body,
+     // tenantId: req.user.tenantId
+    }); 
     res.status(201).json(area);
   } catch (err) {
     res.status(400).json({
@@ -28,9 +36,12 @@ exports.createArea = async (req, res) => {
 // UPDATE AREA
 exports.updateArea = async (req, res) => {
   try {
-    const area = await Area.findByIdAndUpdate(
-      req.params.id,
+    const area = await Area.findByIdAndUpdate({
+      _id: req.params.id,
+   //   tenantId: req.user.tenantId
+    },
       req.body,
+
       { new: true }
     );
     res.json(area);
@@ -42,7 +53,10 @@ exports.updateArea = async (req, res) => {
 // DELETE AREA
 exports.deleteArea = async (req, res) => {
   try {
-    await Area.findByIdAndDelete(req.params.id);
+    await Area.findByIdAndDelete({
+      _id: req.params.id,
+     // tenantId: req.user.tenantId
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ message: "Failed to delete area" });

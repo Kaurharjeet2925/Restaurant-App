@@ -38,7 +38,7 @@ const MenuItems = () => {
   }, [items, searchQuery]);
 
   return (
-    <div className="p-6">
+    <div className="p-4">
 
       <h1 className="text-3xl font-bold text-gray-800 mb-10">
         🍔 Menu Items

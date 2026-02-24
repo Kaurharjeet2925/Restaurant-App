@@ -122,6 +122,7 @@ exports.occupyTable = async (req, res) => {
 
     // 🔥 CREATE EMPTY ORDER HERE
     const order = await Order.create({
+      orderType: "dine_in",
       tableId: table._id,
       items: [],
       subTotal: 0,

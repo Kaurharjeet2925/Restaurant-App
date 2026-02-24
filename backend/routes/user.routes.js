@@ -25,7 +25,7 @@ router.get("/all", auth, onlySuperAdmin, getAllUsers);
 router.get("/user/me", auth, getMyProfile);
 
 router.post(
-  "/superadmin/create-user",
+  "/superAdmin/create-user",
   auth,
   allowAdminAndSuperAdmin,
   upload.single("image"),

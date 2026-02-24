@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ["admin", "waiter", "kitchen", "billing"],
+      enum: ["superAdmin", "admin", "waiter", "kitchen"],
       default: "waiter",
     },
   phone: String,
@@ -20,10 +20,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/**
- * ✅ SAFEST PASSWORD HASHING
- * No next(), no async → cannot fail
- */
 userSchema.pre("save", function () {
   if (!this.isModified("password")) return;
 

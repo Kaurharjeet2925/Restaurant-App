@@ -1,92 +1,93 @@
-import React, { useEffect, useState, useContext } from "react";
-import { toast } from "react-toastify";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import apiClient from "../../apiclient/apiclient";
 import KotList from "./Kot/KotList";
-import { SocketContext } from "../../context/SocketContext";
+import { NotificationContext } from "../../context/NotificationContext";
+
+/* ================= STATUS CARD (MOBILE) ================= */
+const StatusCard = ({ title, count, color, onClick }) => (
+  <div
+    onClick={onClick}
+    className={`${color} text-white rounded-lg p-5 cursor-pointer shadow`}
+  >
+    <div className="text-lg font-semibold">{title}</div>
+    <div className="text-3xl font-bold mt-1">{count}</div>
+  </div>
+);
 
 const KitchenDashboard = () => {
   const [kots, setKots] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeStatus, setActiveStatus] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  const { notifications } = useContext(NotificationContext);
+  const lastFetchRef = useRef(0);
 
-  const lastFetchRef = React.useRef(0);
+  /* ================= HANDLE RESIZE ================= */
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) setActiveStatus(null);
+    };
 
- const loadKots = async ({ silent = false, force = false } = {}) => {
-  const now = Date.now();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  if (!force && now - lastFetchRef.current < 400) return;
-  lastFetchRef.current = now;
+  /* ================= LOAD KOTS ================= */
+  const loadKots = async ({ silent = false, force = false } = {}) => {
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < 400) return;
+    lastFetchRef.current = now;
 
-  try {
-  
+    try {
+      if (!silent) setLoading(true);
+      const res = await apiClient.get("/kitchen/kots", {
+        params: { t: Date.now() },
+      });
+      setKots(res.data || []);
+    } catch (error) {
+      console.error("Failed to load KOTs", error);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
 
-    const res = await apiClient.get("/kitchen/kots", {
-      params: { t: Date.now() } // cache buster
-    });
+  /* ================= INITIAL LOAD + POLLING ================= */
+  useEffect(() => {
+    loadKots({ force: true });
 
-    setKots(res.data || []);
-  } catch (error) {
-    console.error("Failed to load KOTs", error);
-  } 
-};
+    const interval = setInterval(
+      () => loadKots({ silent: true }),
+      10000
+    );
 
+    return () => clearInterval(interval);
+  }, []);
 
- useEffect(() => {
-  loadKots({ force: true });
+  /* ================= REACT TO NOTIFICATIONS ================= */
+  useEffect(() => {
+    if (!notifications?.length) return;
 
-  const interval = setInterval(
-    () => loadKots({ silent: true }),
-    10000
+    const latest = notifications[0];
+
+    // 🔔 Refresh KOTs only for relevant events
+    if (
+      latest.activityType === "order" ||
+      latest.activityType === "kitchen"
+    ) {
+      loadKots({ silent: true, force: true });
+    }
+  }, [notifications]);
+
+  /* ================= FILTERS ================= */
+  const pendingKots = kots.filter((k) => k.status === "pending");
+  const preparingKots = kots.filter((k) => k.status === "preparing");
+  const readyKots = kots.filter(
+    (k) => k.status === "ready" || k.status === "served"
   );
 
-  return () => clearInterval(interval);
-}, []);
-
-// --- Real-time socket listeners ---
-const socket = useContext(SocketContext);
-
-useEffect(() => {
-  if (!socket) return;
-
-  const onKitchenKotSent = (payload) => {
-    loadKots({ silent: true, force: true });
-    try {
-      toast.info(`New KOT #${payload.kotNo} received`, { autoClose: 2500 });
-    } catch (e) {
-      /* ignore */
-    }
-  };
-
-  const onKotStatusChanged = (payload) => {
-    loadKots({ silent: true, force: true });
-    try {
-      toast.info(`KOT ${payload.kotNo} ${payload.status}`, { autoClose: 2500 });
-    } catch (e) {
-      /* ignore */
-    }
-  };
-
-  const onKotUpdated = () => loadKots({ silent: true, force: true });
-
-  socket.on("kitchen.kot.sent", onKitchenKotSent);
-  socket.on("kot.statusChanged", onKotStatusChanged);
-  socket.on("kot.updated", onKotUpdated);
-
-  return () => {
-    socket.off("kitchen.kot.sent", onKitchenKotSent);
-    socket.off("kot.statusChanged", onKotStatusChanged);
-    socket.off("kot.updated", onKotUpdated);
-  };
-}, [socket]);
-
-
-  // ✅ FILTER BY STATUS
- const pendingKots = kots.filter(k => k.status === "pending");
-const preparingKots = kots.filter(k => k.status === "preparing");
-const readyKots = kots.filter(
-  k => k.status === "ready" || k.status === "served"
-);
-
-
+  /* ================= UI ================= */
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       {/* HEADER */}
@@ -94,45 +95,82 @@ const readyKots = kots.filter(
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           🍳 Kitchen Display System
         </h1>
-
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-sm text-green-700 font-medium">
-            Live
-          </span>
+          <span className="text-sm text-green-700 font-medium">Live</span>
         </div>
       </div>
 
-      {/* LOADING */}
-      {/* {loading && (
+      {loading && (
         <div className="text-sm text-gray-500 mb-3">
           Loading kitchen orders...
         </div>
-      )} */}
+      )}
 
-      {/* KDS COLUMNS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
-        <KotList
-          title="New Orders"
-          status="pending"
-          kots={pendingKots}
-          reload={loadKots}
-        />
+      {/* ================= MOBILE VIEW ================= */}
+      {isMobile && !activeStatus && (
+        <div className="space-y-4">
+          <StatusCard
+            title="Pending"
+            count={pendingKots.length}
+            color="bg-red-500"
+            onClick={() => setActiveStatus("pending")}
+          />
+          <StatusCard
+            title="Preparing"
+            count={preparingKots.length}
+            color="bg-yellow-400"
+            onClick={() => setActiveStatus("preparing")}
+          />
+          <StatusCard
+            title="Ready"
+            count={readyKots.length}
+            color="bg-green-500"
+            onClick={() => setActiveStatus("ready")}
+          />
+        </div>
+      )}
 
-        <KotList
-          title="Preparing"
-          status="preparing"
-          kots={preparingKots}
-          reload={loadKots}
-        />
+      {/* ================= MOBILE LIST ================= */}
+      {isMobile && activeStatus && (
+        <>
+          <button
+            onClick={() => setActiveStatus(null)}
+            className="mb-3 text-blue-600 text-sm"
+          >
+            ← Back
+          </button>
 
-        <KotList
-          title="Ready"
-          status="ready"
-          kots={readyKots}
-          reload={loadKots}
-        />
-      </div>
+          {activeStatus === "pending" && (
+            <KotList title="Pending" kots={pendingKots} reload={loadKots} />
+          )}
+          {activeStatus === "preparing" && (
+            <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
+          )}
+          {activeStatus === "ready" && (
+            <KotList
+              title="Ready"
+              kots={readyKots}
+              reload={loadKots}
+              isReadyColumn
+            />
+          )}
+        </>
+      )}
+
+      {/* ================= DESKTOP VIEW ================= */}
+      {!isMobile && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KotList title="New Orders" kots={pendingKots} reload={loadKots} />
+          <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
+          <KotList
+            title="Ready"
+            kots={readyKots}
+            reload={loadKots}
+            isReadyColumn
+          />
+        </div>
+      )}
     </div>
   );
 };

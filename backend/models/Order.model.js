@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+/* ================= ORDER ITEM ================= */
 const orderItemSchema = new mongoose.Schema({
   menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -8,9 +9,7 @@ const orderItemSchema = new mongoose.Schema({
   },
   name: String,
   price: Number,
-  variant: {
-    type: String,
-  },
+  variant: String,
   qty: {
     type: Number,
     required: true,
@@ -24,6 +23,7 @@ const orderItemSchema = new mongoose.Schema({
   },
 });
 
+/* ================= KOT ================= */
 const kotSchema = new mongoose.Schema(
   {
     kotNo: Number,
@@ -37,51 +37,90 @@ const kotSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/* ================= ORDER ================= */
 const orderSchema = new mongoose.Schema(
   {
-    tableId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Table",
+    /* 🔹 ORDER TYPE */
+    orderType: {
+      type: String,
+      enum: ["dine_in", "counter"],
       required: true,
     },
 
-    // ✅ CURRENT BILL ITEMS
-    items: [orderItemSchema],
+    /* 🔹 TABLE (ONLY FOR DINE-IN) */
+    tableId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Table",
+      required: function () {
+        return this.orderType === "dine_in";
+      },
+    },
 
-    // ✅ KOT HISTORY (NEW)
+    /* 🔹 CUSTOMER (DINE-IN OR CREDIT) */
+    customer: {
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Customer",
+  },
+  name: String,
+  phone: String,
+},
+
+    items: [orderItemSchema],
     kots: [kotSchema],
 
+    /* 🔹 ORDER STATUS */
     status: {
       type: String,
-      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "served", "completed"],
+      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "completed"],
       default: "draft",
     },
 
-    paymentStatus: {
+    /* 🔹 PAYMENT MODE */
+    paymentType: {
       type: String,
-      enum: ["unpaid", "paid"],
-      default: "unpaid",
+      enum: ["immediate", "credit"],
+      default: "immediate",
     },
 
-     subTotal: { type: Number, default: 0 },
-
-    tax: { type: Number, default: 0 },
-    taxPercent: { type: Number, default: 0 },
-
-    serviceAmount: { type: Number, default: 0 },
-    servicePercent: { type: Number, default: 0 },
-
-    discount: { type: Number, default: 0 },
-
-    totalAmount: { type: Number, default: 0 },
+    /* 🔹 PAYMENT STATUS */
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "partial", "paid"],
+      default: "unpaid",
+    },
 
     paymentMethod: {
       type: String,
       enum: ["cash", "upi", "card"],
     },
- 
+
+    /* 🔹 AMOUNTS */
+    subTotal: { type: Number, default: 0 },
+    taxPercent: { type: Number, default: 0 },
+    tax: { type: Number, default: 0 },
+    servicePercent: { type: Number, default: 0 },
+    serviceAmount: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 },
+
+    /* 🔹 CREDIT */
+    dueAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+/* 🔐 VALIDATION: CUSTOMER REQUIRED FOR DINE-IN OR CREDIT */
+// orderSchema.pre("validate", function () {
+//   if (
+//     (this.orderType === "dine_in" || this.paymentType === "credit") &&
+//     (!this.customer?.name || !this.customer?.phone)
+//   ) {
+//     throw new Error(
+//       "Customer name and phone required for dine-in or credit order"
+//     );
+//   }
+// });
+
 
 module.exports = mongoose.model("Order", orderSchema);

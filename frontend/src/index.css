@@ -1,3 +1,9 @@
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* 🔥 KEY */
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,4 +20,18 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+.native-swipe {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+ overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+
+  scrollbar-width: none; /* Firefox */
+}
+
+.native-swipe::-webkit-scrollbar {
+  height: 0; /* Chrome / Safari */
 }

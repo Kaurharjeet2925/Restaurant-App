@@ -7,6 +7,8 @@ import KotHistory from "./KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 
 import BillPrint from "./BillPrint";
+import VariantModal from "../MenuItemManaement/VariantModal";
+import MenuCard from "./MenuCard";
 
 const OrderPage = () => {
   const [params] = useSearchParams();
@@ -24,6 +26,7 @@ const OrderPage = () => {
 
  const [checkoutMode, setCheckoutMode] = useState(false);
 const [variantModalItem, setVariantModalItem] = useState(null);
+const orderType = "dine_in";
 const getDefaultUnit = (portionType) => {
   if (!portionType || !Array.isArray(portionType.units) || portionType.units.length === 0) {
     return null;
@@ -49,16 +52,14 @@ const getDefaultUnit = (portionType) => {
 
   /* ================= FETCH ORDER ================= */
 const fetchOrder = useCallback(async (id) => {
-  
+  console.log('[OrderPage] fetchOrder called with id:', id);
   try {
-    
     const res = await apiClient.get(`/orders/${id}`);
     const ord = res.data;
-
+    console.log('[OrderPage] fetchOrder result:', ord);
     setOrder(ord);
-
-   const grouped = ord.items.reduce((acc, i) => {
-  const key = `${i.menuItemId}_${i.variant || "default"}`;
+    const grouped = ord.items.reduce((acc, i) => {
+      const key = `${i.menuItemId}_${i.variant || "default"}`;
 
   if (!acc[key]) {
     acc[key] = {
@@ -80,9 +81,9 @@ const fetchOrder = useCallback(async (id) => {
 
 
     setCart(Object.values(grouped));
-
     return ord; // 🔥 REQUIRED FOR PRINT & SEND
   } catch (error) {
+    console.error('[OrderPage] fetchOrder error:', error);
     toast.error("Failed to load order");
     return null; // 🔒 safety
   }
@@ -227,18 +228,22 @@ const addItem = (menuItem, unit = null) => {
 };
 
 const changeQty = (cartKey, diff) => {
-  if (isLocked) return;
+  setCart(prev =>
+    prev.map(i => {
+      if (i.cartKey !== cartKey) return i;
 
-  setCart((prev) =>
-    prev
-      .map((i) =>
-        i.cartKey === cartKey
-          ? { ...i, qty: i.qty + diff }
-          : i
-      )
-      .filter((i) => i.qty > 0)
+      // 🔒 DO NOT reduce below kotQty
+      const newQty = i.qty + diff;
+      if (newQty < i.kotQty) {
+        toast.info("Cannot reduce item already sent to kitchen");
+        return i;
+      }
+
+      return { ...i, qty: newQty };
+    })
   );
 };
+
 
 
 
@@ -353,24 +358,22 @@ const sendAndPrintKOT = async () => {
   try {
     const newItems = cart
       .filter(i => i.qty > i.kotQty)
-     .map(i => ({
-  menuItemId: i.menuItemId,          
-  name: i.name,
-  price: calculateItemTotal(i) / i.qty, // optional but better
-  qty: i.qty - i.kotQty,
-  variant: i.selectedUnit?.name || null // optional (recommended)
-}));
+      .map(i => ({
+        menuItemId: i.menuItemId,
+        name: i.name,
+        price: calculateItemTotal(i) / i.qty, // optional but better
+        qty: i.qty - i.kotQty,
+        variant: i.selectedUnit?.name || null // optional (recommended)
+      }));
 
-
-    await apiClient.put(`/orders/${order._id}`, { items: newItems });
+    console.log('[OrderPage] Sending KOT with items:', newItems);
+    await apiClient.put(`/orders/${order._id}`, { orderType, items: newItems });
 
     // Lock local cart
     setCart(prev => prev.map(i => ({ ...i, kotQty: i.qty })));
 
     const updatedOrder = await fetchOrder(order._id);
-
-    const latestKot =
-      updatedOrder?.kots?.[updatedOrder.kots.length - 1];
+    const latestKot = updatedOrder?.kots?.[updatedOrder.kots.length - 1];
 
     // ⏳ WAIT FOR DOM RENDER
     setTimeout(() => {
@@ -382,6 +385,7 @@ const sendAndPrintKOT = async () => {
       }
     }, 300); // 🔥 critical delay
   } catch (err) {
+    console.error('[OrderPage] sendAndPrintKOT error:', err);
     toast.error("Failed to send KOT");
   }
 };
@@ -420,8 +424,20 @@ const handleStartCheckout = () => {
     return;
   }
 
-  setCheckoutMode(true);
+  // ⚠️ WARNING ONLY (NOT BLOCKING)
+  if (hasUnsentItems) {
+    const confirmProceed = window.confirm(
+      "⚠️ Latest items are not sent to kitchen.\n\nAre you sure you want to proceed without sending the latest KOT?"
+    );
+
+    if (!confirmProceed) {
+      return; // user clicked Cancel
+    }
+  }
+
+  setCheckoutMode(true); // ✅ proceed anyway
 };
+
 
 const calculateItemTotal = (item) => {
   if (!item?.selectedUnit) return 0;
@@ -446,11 +462,24 @@ const hasNewItems = useMemo(
   () => cart.some(i => i.qty > i.kotQty),
   [cart]
 );
-
-const subtotal = useMemo(
-  () => cart.reduce((s, i) => s + calculateItemTotal(i), 0),
+const hasUnsentItems = useMemo(
+  () => cart.some(i => i.qty > i.kotQty),
   [cart]
 );
+
+const kotSubtotal = useMemo(() => {
+  return cart.reduce((sum, i) => {
+    if (i.kotQty === 0) return sum;
+
+    const itemForBill = {
+      ...i,
+      qty: i.kotQty,
+    };
+
+    return sum + calculateItemTotal(itemForBill);
+  }, 0);
+}, [cart]);
+
 
 const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
   const [servicePercent, setServicePercent] = useState(0);
@@ -458,19 +487,19 @@ const [checkoutTaxPercent, setCheckoutTaxPercent] = useState(0);
 
   // Compute tax/service with two-decimal precision (match backend)
   const taxAmount = useMemo(() => {
-    const t = Number(((subtotal * Number(checkoutTaxPercent || 0)) / 100).toFixed(2));
+    const t = Number(((kotSubtotal * Number(checkoutTaxPercent || 0)) / 100).toFixed(2));
     return Number.isNaN(t) ? 0 : t;
-  }, [subtotal, checkoutTaxPercent]);
+  }, [kotSubtotal, checkoutTaxPercent]);
 
   const serviceAmount = useMemo(() => {
-    const s = Number(((subtotal * Number(servicePercent || 0)) / 100).toFixed(2));
+    const s = Number(((kotSubtotal * Number(servicePercent || 0)) / 100).toFixed(2));
     return Number.isNaN(s) ? 0 : s;
-  }, [subtotal, servicePercent]);
+  }, [kotSubtotal, servicePercent]);
 
   const finalTotal = useMemo(() => {
-    const tot = Number((subtotal + taxAmount + serviceAmount - Number(discount || 0)).toFixed(2));
+    const tot = Number((kotSubtotal + taxAmount + serviceAmount - Number(discount || 0)).toFixed(2));
     return Math.max(0, tot);
-  }, [subtotal, taxAmount, serviceAmount, discount]);
+  }, [kotSubtotal, taxAmount, serviceAmount, discount]);
 
 const isPaid = order?.paymentStatus === "paid";
 const isCheckout = checkoutMode === true;
@@ -484,15 +513,61 @@ const displayTotal = useMemo(() => {
   }
   return Number(finalTotal);
 }, [isPaid, order?.totalAmount, finalTotal]);
+const getItemVariants = (itemId) =>
+  cart.filter((i) => i.menuItemId === itemId);
+
+const getItemTotalQty = (itemId) =>
+  getItemVariants(itemId).reduce((s, i) => s + i.qty, 0);
+
+const hasMultipleVariantsInCart = (itemId) =>
+  getItemVariants(itemId).length > 1;
 
 
-// const canEditOrCancel =
-//   kot.status === "pending" &&
-//   order?.paymentStatus !== "paid";
+const updateVariantQty = (item, unit, diff) => {
+  const key = `${item._id}_${unit.name}`;
+
+  setCart((prev) => {
+    const existing = prev.find((i) => i.cartKey === key);
+
+    // ➖ REMOVE / DECREASE
+    if (existing && existing.qty + diff <= 0) {
+      // 🔒 don’t go below KOT qty
+      if (existing.kotQty > 0) {
+        toast.info("Item already sent to kitchen");
+        return prev;
+      }
+      return prev.filter((i) => i.cartKey !== key);
+    }
+
+    // ➕ UPDATE EXISTING
+    if (existing) {
+      return prev.map((i) =>
+        i.cartKey === key
+          ? { ...i, qty: i.qty + diff }
+          : i
+      );
+    }
+
+    // ➕ ADD NEW VARIANT
+    return [
+      ...prev,
+      {
+        cartKey: key,
+        menuItemId: item._id,
+        name: item.name,
+        basePrice: item.price,
+        portionType: item.portionType,
+        selectedUnit: unit,
+        qty: 1,
+        kotQty: 0,
+      },
+    ];
+  });
+};
 
   return (
     <div className="h-[calc(100vh-64px)] bg-gray-50 p-4">
-      <div className="grid grid-cols-12 gap-4 h-full">
+      <div className="grid grid-cols-12 gap-2 h-full">
 
         {/* MENU */}
         <div className="col-span-8 bg-white rounded-xl p-4 overflow-y-auto">
@@ -506,49 +581,55 @@ const displayTotal = useMemo(() => {
           </div>
 
           <div className="grid grid-cols-4 gap-4">
-            {filteredMenu.map((item) => (
-<div
-  key={item._id}
-onClick={() => {
-  if (isLocked) return;
+           {filteredMenu.map((item) => {
+  const totalQty = getItemTotalQty(item._id);
+  const variantsInCart = getItemVariants(item._id);
+  const hasVariants = item.portionType?.units?.length > 1;
+  const multipleVariants = hasMultipleVariantsInCart(item._id);
 
-  const portion = item.portionType;
+  return (
+    <MenuCard
+      key={item._id}
+      item={item}
+      totalQty={totalQty}
+      disabled={isLocked}
 
-  // Safety
-  if (!portion || !portion.units?.length) {
-    toast.error("Portion configuration missing");
-    return;
-  }
+      /* CARD CLICK */
+      onPress={() => {
+        if (isLocked) return;
 
-  // ✅ ONLY ONE UNIT → DIRECT ADD
-  if (portion.units.length === 1) {
-    addItem(item, portion.units[0]);
-    return;
-  }
+        if (hasVariants) {
+          setVariantModalItem(item);
+        } else {
+          addItem(item);
+        }
+      }}
 
-  // ✅ MULTIPLE UNITS → OPEN MODAL
-  setVariantModalItem(item);
-}}
+      /* PLUS */
+      onIncrease={() => {
+        if (isLocked) return;
 
+        if (hasVariants && multipleVariants) {
+          setVariantModalItem(item);
+        } else {
+          changeQty(variantsInCart[0].cartKey, 1);
+        }
+      }}
 
+      /* MINUS */
+      onDecrease={() => {
+        if (isLocked) return;
 
-  className={`border rounded-xl p-3 cursor-pointer hover:shadow ${
-    isLocked ? "opacity-50 pointer-events-none" : ""
-  }`}
->
-                {item.image ? (
-                  <img
-                    src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
-                    alt={item.name}
-                    className="h-24 w-full object-cover rounded mb-2"
-                  />
-                ) : (
-                  <div className="h-24 rounded bg-gray-100 mb-2" />
-                )}
-                <div className="font-medium">{item.name}</div>
-                <div className="text-[#ff4d4d]">₹{item.price}</div>
-              </div>
-            ))}
+        if (hasVariants && multipleVariants) {
+          setVariantModalItem(item);
+        } else {
+          changeQty(variantsInCart[0].cartKey, -1);
+        }
+      }}
+    />
+  );
+})}
+
           </div>
         </div>
 
@@ -595,7 +676,14 @@ onClick={() => {
     {cart.map((i) => (
   <div key={i.cartKey} className="flex justify-between mb-3">
     <div>
-      <div className="font-medium">{i.name}</div>
+     <div className="font-medium flex items-center gap-2">
+  {i.name}
+
+  {/* 🔴 NEW ITEM DOT */}
+  {i.qty > i.kotQty && (
+    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+  )}
+</div>
       <div className="text-xs text-gray-500">
         {i.selectedUnit.name} | ₹{calculateItemTotal(i)}
       </div>
@@ -680,7 +768,7 @@ onClick={() => {
     {/* SUBTOTAL */}
     <div className="flex justify-between text-sm font-medium border-t pt-2">
       <span>Subtotal</span>
-      <span>₹{subtotal}</span>
+      <span>₹{kotSubtotal}</span>
     </div>
 
     {/* GST */}
@@ -826,44 +914,14 @@ onClick={() => {
   )}
 </div>
 {variantModalItem && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white w-[320px] rounded-xl p-4">
-      <h3 className="font-semibold mb-3">
-        Select {variantModalItem.name}
-      </h3>
-
-      <div className="space-y-2">
-        {variantModalItem.portionType.units.map((unit) => (
-          <button
-            key={unit._id}
-            onClick={() => {
-              addItem(variantModalItem, unit);
-              setVariantModalItem(null);
-            }}
-            className="w-full flex justify-between border rounded-lg px-3 py-2 hover:bg-gray-100"
-          >
-            <span>{unit.name}</span>
-            <span className="font-medium">
-              ₹{
-  variantModalItem.portionType.pricingRule === "percentage"
-    ? (variantModalItem.price * unit.value) / 100
-    : unit.value
-}
-
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <button
-        onClick={() => setVariantModalItem(null)}
-        className="mt-3 w-full text-sm text-gray-500"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
+  <VariantModal
+    item={variantModalItem}
+    cart={cart}
+    onQtyChange={updateVariantQty}
+    onClose={() => setVariantModalItem(null)}
+  />
 )}
+
 
 
 

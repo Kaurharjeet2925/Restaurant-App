@@ -3,3 +3,4 @@ backend/node_modules/
 .env
 dist/
 build/
+frontend/src/pages/Tables/Tables.js
