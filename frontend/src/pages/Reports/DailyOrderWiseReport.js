@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import apiClient from "../../apiclient/apiclient";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import DatePicker from "../../components/DatePicker";
 
 const DailyOrderWiseReport = () => {
   const [date, setDate] = useState(null);
@@ -39,11 +38,6 @@ const DailyOrderWiseReport = () => {
           selected={date}
           onChange={(d) => setDate(d)}
           dateFormat="dd-MM-yyyy"
-          placeholderText="Select date"
-          className="border px-3 py-2"
-          showMonthDropdown
-          showYearDropdown
-          dropdownMode="select"
         />
         <button
           onClick={fetchReport}
