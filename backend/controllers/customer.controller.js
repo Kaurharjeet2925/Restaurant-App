@@ -165,7 +165,12 @@ exports.getCustomerLedger = async (req, res) => {
 
 exports.payCreditAmount = async (req, res) => {
   try {
-    const { customerId, amount, paymentMethod = "cash", isAdvance = false } = req.body;
+    const {
+      customerId,
+      amount,
+      paymentMethod = "cash",
+      isAdvance = false,
+    } = req.body;
 
     // ✅ VALIDATION
     if (
@@ -180,86 +185,93 @@ exports.payCreditAmount = async (req, res) => {
     }
 
     let remaining = Number(amount);
+    let paidAmount = 0;
+    const updatedOrders = [];
 
-    // 🔥 FETCH UNPAID CREDIT ORDERS (FIFO)
+    /* ================= FETCH UNPAID CREDIT ORDERS (FIFO) ================= */
     const orders = await Order.find({
       paymentType: "credit",
       paymentStatus: { $ne: "paid" },
-      "customer._id": customerId,
+      "customer.customerId": customerId,
     }).sort({ createdAt: 1 });
 
-    let paidAmount = 0;
+    /* ================= AUTO-ADJUST AGAINST ORDERS ================= */
     for (const order of orders) {
       if (remaining <= 0) break;
 
-      if (order.dueAmount <= remaining) {
-        remaining -= order.dueAmount;
-        paidAmount += order.dueAmount;
-        order.dueAmount = 0;
-        order.paymentStatus = "paid";
-      } else {
-        paidAmount += remaining;
-        order.dueAmount -= remaining;
-        order.paymentStatus = "partial";
-        remaining = 0;
-      }
+      const due = order.dueAmount || 0;
+      const used = Math.min(due, remaining);
 
+      order.dueAmount -= used;
+      remaining -= used;
+      paidAmount += used;
+
+      order.paymentStatus =
+        order.dueAmount === 0 ? "paid" : "partial";
       order.paymentMethod = paymentMethod;
+
       await order.save();
+
+      updatedOrders.push({
+        orderId: order._id,
+        adjusted: used,
+        dueAmount: order.dueAmount,
+        paymentStatus: order.paymentStatus,
+      });
     }
 
-    // Get last balance
-    const lastLedger = await CustomerLedger.findOne({ customerId }).sort({ createdAt: -1 });
-    let lastBalance = lastLedger ? lastLedger.balanceAfter : 0;
+    /* ================= LEDGER BALANCE ================= */
+    const lastLedger = await CustomerLedger.findOne({ customerId })
+      .sort({ createdAt: -1 });
 
+    let runningBalance = lastLedger ? lastLedger.balanceAfter : 0;
 
-    // Ledger entry for payment against due
+    /* ================= LEDGER ENTRY : PAYMENT USED ================= */
     if (paidAmount > 0) {
+      runningBalance -= paidAmount;
+
       await CustomerLedger.create({
         customerId,
         type: "payment",
         credit: paidAmount,
-        balanceAfter: lastBalance - paidAmount,
+        balanceAfter: runningBalance,
         note: `Credit payment (${paymentMethod})`,
       });
-      lastBalance -= paidAmount;
     }
 
-    // Ledger entry for advance
+    /* ================= LEDGER ENTRY : ADVANCE (OPTIONAL) ================= */
+    let advanceAmount = 0;
     if (isAdvance && remaining > 0) {
+      advanceAmount = remaining;
+      runningBalance -= remaining;
+
       await CustomerLedger.create({
         customerId,
         type: "payment",
         credit: remaining,
-        balanceAfter: lastBalance - remaining,
-        note: `Advance payment (${paymentMethod})`,
+        balanceAfter: runningBalance,
+        note: `Advance received (${paymentMethod})`,
       });
-      lastBalance -= remaining;
-    }
 
-    // Always record payment, even if no dues or advance
-    if (paidAmount === 0 && (!isAdvance || remaining === 0)) {
-      await CustomerLedger.create({
-        customerId,
-        type: "payment",
-        credit: amount,
-        balanceAfter: lastBalance - amount,
-        note: `Payment received (${paymentMethod})`,
-      });
-      lastBalance -= amount;
+      remaining = 0;
     }
 
     return res.json({
-      message: isAdvance && remaining > 0 ? "Advance received" : "Payment collected successfully",
+      message:
+        paidAmount > 0
+          ? "Payment collected and auto-adjusted"
+          : "Advance received",
       paidAmount,
-      advance: isAdvance && remaining > 0 ? remaining : 0,
-      remainingUnadjusted: 0,
+      advance: advanceAmount,
+      finalBalance: runningBalance,
+      updatedOrders,
     });
   } catch (err) {
     console.error("Credit payment error:", err);
     res.status(500).json({ message: "Payment failed" });
   }
 };
+
 
 exports.getCustomerById = async (req, res) => {
   try {

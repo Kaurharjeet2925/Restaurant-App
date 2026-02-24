@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
+import NotificationBell from "./NotificationBell"; // 🔔 ADD THIS
 
 export default function Navbar() {
   const [params, setParams] = useSearchParams();
@@ -44,7 +45,7 @@ export default function Navbar() {
   }, [q, params, setParams]);
 
   return (
-    <div className=" h-16 bg-white shadow-sm flex items-center justify-between px-6">
+    <div className="h-16 bg-white shadow-sm flex items-center justify-between px-6">
       {/* LEFT */}
       <div className="flex items-center gap-4">
         {showSearch && (
@@ -61,7 +62,10 @@ export default function Navbar() {
       </div>
 
       {/* RIGHT */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
+        {/* 🔔 NOTIFICATION BELL */}
+        <NotificationBell />
+
         {/* Avatar */}
         {profileImage ? (
           <img

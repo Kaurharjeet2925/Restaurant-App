@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import apiClient from "../../apiclient/apiclient";
 import KotList from "./Kot/KotList";
-import { SocketContext } from "../../context/SocketContext";
+import { NotificationContext } from "../../context/NotificationContext";
 
 /* ================= STATUS CARD (MOBILE) ================= */
 const StatusCard = ({ title, count, color, onClick }) => (
@@ -17,19 +17,17 @@ const StatusCard = ({ title, count, color, onClick }) => (
 const KitchenDashboard = () => {
   const [kots, setKots] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeStatus, setActiveStatus] = useState(null); // mobile view
+  const [activeStatus, setActiveStatus] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  const socket = useContext(SocketContext);
-  const lastFetchRef = React.useRef(0);
+  const { notifications } = useContext(NotificationContext);
+  const lastFetchRef = useRef(0);
 
   /* ================= HANDLE RESIZE ================= */
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
-        setActiveStatus(null); // reset mobile state
-      }
+      if (window.innerWidth >= 768) setActiveStatus(null);
     };
 
     window.addEventListener("resize", handleResize);
@@ -58,29 +56,29 @@ const KitchenDashboard = () => {
   /* ================= INITIAL LOAD + POLLING ================= */
   useEffect(() => {
     loadKots({ force: true });
+
     const interval = setInterval(
       () => loadKots({ silent: true }),
       10000
     );
+
     return () => clearInterval(interval);
   }, []);
 
-  /* ================= SOCKET EVENTS ================= */
+  /* ================= REACT TO NOTIFICATIONS ================= */
   useEffect(() => {
-    if (!socket) return;
+    if (!notifications?.length) return;
 
-    const refresh = () => loadKots({ silent: true, force: true });
+    const latest = notifications[0];
 
-    socket.on("kitchen.kot.sent", refresh);
-    socket.on("kot.statusChanged", refresh);
-    socket.on("kot.updated", refresh);
-
-    return () => {
-      socket.off("kitchen.kot.sent", refresh);
-      socket.off("kot.statusChanged", refresh);
-      socket.off("kot.updated", refresh);
-    };
-  }, [socket]);
+    // 🔔 Refresh KOTs only for relevant events
+    if (
+      latest.activityType === "order" ||
+      latest.activityType === "kitchen"
+    ) {
+      loadKots({ silent: true, force: true });
+    }
+  }, [notifications]);
 
   /* ================= FILTERS ================= */
   const pendingKots = kots.filter((k) => k.status === "pending");
@@ -133,7 +131,7 @@ const KitchenDashboard = () => {
         </div>
       )}
 
-      {/* MOBILE LIST VIEW */}
+      {/* ================= MOBILE LIST ================= */}
       {isMobile && activeStatus && (
         <>
           <button

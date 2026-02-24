@@ -3,23 +3,29 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
-const connectDB = require("./config/db");
+const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
-const orderRoutes = require("./routes/order.routes")
+
+const connectDB = require("./config/db");
+const User = require("./models/user.model");
+
+// Routes
+const orderRoutes = require("./routes/order.routes");
 const userRoutes = require("./routes/user.routes");
 const categoryRoutes = require("./routes/category.routes");
 const menuRoutes = require("./routes/menuItem.routes");
 const tableRoutes = require("./routes/table.routes");
-const CustomerRoutes = require("./routes/customer.routes");
-const AreaRoutes = require("./routes/area.routes")
-const ReportRoutes = require("./routes/report.routes");
-const PortionTypeRoutes = require("./routes/portionType.routes");
-const app = express();
+const customerRoutes = require("./routes/customer.routes");
+const areaRoutes = require("./routes/area.routes");
+const reportRoutes = require("./routes/report.routes");
+const portionTypeRoutes = require("./routes/portionType.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
+const app = express();
 const server = http.createServer(app);
 
 // -------------------------------------
-// ✅ CORS SETUP
+// ✅ CORS
 // -------------------------------------
 app.use(
   cors({
@@ -29,7 +35,7 @@ app.use(
 );
 
 // -------------------------------------
-// ✅ SOCKET.IO SETUP
+// ✅ SOCKET.IO
 // -------------------------------------
 const io = new Server(server, {
   cors: {
@@ -46,24 +52,18 @@ app.use(express.json());
 app.use(cookieParser());
 app.use("/uploads", express.static("uploads"));
 
-
-// ------------------------------------------------
-// 🔥 CUSTOM EXPRESS LOGGER (YOUR FORMAT)
-// ------------------------------------------------
+// -------------------------------------
+// 🔥 LOGGER
+// -------------------------------------
 app.use((req, res, next) => {
   const start = Date.now();
-
   res.on("finish", () => {
-    const duration = Date.now() - start;
-
     console.log(
-      `🔹 [${req.method}] ${req.originalUrl} - Status: ${res.statusCode} (${duration}ms)`
+      `🔹 [${req.method}] ${req.originalUrl} - ${res.statusCode} (${Date.now() - start}ms)`
     );
   });
-
   next();
 });
-
 
 // Attach io to req
 app.use((req, res, next) => {
@@ -77,27 +77,64 @@ app.use((req, res, next) => {
 app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", menuRoutes);
-app.use("/api",CustomerRoutes);
-app.use("/api",AreaRoutes);
-app.use("/api",tableRoutes);
+app.use("/api", customerRoutes);
+app.use("/api", areaRoutes);
+app.use("/api", tableRoutes);
 app.use("/api", orderRoutes);
-app.use("/api", ReportRoutes);
-app.use("/api", PortionTypeRoutes);
+app.use("/api", reportRoutes);
+app.use("/api", portionTypeRoutes);
+app.use("/api/notifications", notificationRoutes); // ✅ FIXED
+
 // -------------------------------------
-// ✅ SOCKET HANDLERS
+// ✅ SOCKET AUTH
+// -------------------------------------
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error("No token"));
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) return next(new Error("Invalid user"));
+
+    socket.user = user;
+    next();
+  } catch (err) {
+    console.log("❌ Socket auth error:", err.message);
+    next(new Error("Unauthorized socket"));
+  }
+});
+
+// -------------------------------------
+// ✅ SOCKET CONNECTION
 // -------------------------------------
 io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
+  const user = socket.user;
 
-  socket.on("join", (room) => {
-    socket.join(room);
-    console.log(`Socket ${socket.id} joined room ${room}`);
-  });
+  console.log(
+    "⚡ Socket connected:",
+    socket.id,
+    "| User:",
+    user.name,
+    "| Role:",
+    user.role
+  );
+
+  // optional auto-join based on user role
+  socket.join(`role:${user.role}`);
+
+  socket.on("joinUserRoom", (userId) => {
+  if (!userId) return;
+  socket.join(`user:${userId}`);
+  console.log(`✅ Joined user:${userId}`);
+});
 
   socket.on("disconnect", () => {
-    console.log("Socket disconnected:", socket.id);
+    console.log("🔌 Socket disconnected:", socket.id);
   });
 });
+
 
 // -------------------------------------
 // ✅ START SERVER

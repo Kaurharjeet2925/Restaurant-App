@@ -4,7 +4,8 @@ import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import { useSearchParams } from "react-router-dom";
-
+import MenuCard from "./MenuCard";
+import VariantModal from "../MenuItemManaement/VariantModal";
 import BillPrint from "../Order/BillPrint";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 /* ================= PRINT HELPER ================= */
@@ -212,39 +213,51 @@ const finalTotal = useMemo(
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
-            {filteredMenu.map((item) => (
-              <div
-                key={item._id}
-                className="border rounded-xl p-3 cursor-pointer hover:shadow"
-                onClick={() => {
-                  const portion = item.portionType;
-                  if (!portion || !portion.units?.length) {
-                    toast.error("Portion config missing");
-                    return;
-                  }
-
-                  if (portion.units.length === 1) {
-                    addItem(item, portion.units[0]);
-                  } else {
-                    setVariantItem(item);
-                  }
-                }}
-              >
-                {item.image ? (
-                  <img
-                    src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
-                    alt={item.name}
-                    className="h-20 sm:h-24 w-full object-cover rounded mb-1 sm:mb-2"
-                  />
-                ) : (
-                  <div className="h-24 bg-gray-100 rounded mb-2 flex items-center justify-center text-xs">
-                    No Image
-                  </div>
-                )}
-                <div className="font-medium text-xs sm:text-sm">{item.name}</div>
-                <div className="text-red-500 text-xs sm:text-base">₹{item.price}</div>
-              </div>
-            ))}
+            {filteredMenu.map((item) => {
+              // Calculate total quantity in cart for this item
+              const totalQty = cart
+                .filter((i) => i.menuItemId === item._id)
+                .reduce((sum, i) => sum + i.qty, 0);
+              return (
+                <MenuCard
+                  key={item._id}
+                  item={item}
+                  totalQty={totalQty}
+                  onPress={() => {
+                    const portion = item.portionType;
+                    if (!portion || !portion.units?.length) {
+                      toast.error("Portion config missing");
+                      return;
+                    }
+                    if (portion.units.length === 1) {
+                      addItem(item, portion.units[0]);
+                    } else {
+                      setVariantItem(item);
+                    }
+                  }}
+                  onIncrease={() => {
+                    const portion = item.portionType;
+                    if (!portion || !portion.units?.length) return;
+                    if (portion.units.length === 1) {
+                      addItem(item, portion.units[0]);
+                    } else {
+                      setVariantItem(item);
+                    }
+                  }}
+                  onDecrease={() => {
+                    // Decrease qty for the first unit (if only one unit)
+                    const portion = item.portionType;
+                    if (!portion || !portion.units?.length) return;
+                    if (portion.units.length === 1) {
+                      const key = `${item._id}_${portion.units[0].name}`;
+                      changeQty(key, -1);
+                    } else {
+                      setVariantItem(item);
+                    }
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -346,43 +359,21 @@ const finalTotal = useMemo(
         </div>
       </div>
 
-      {/* 🔥 VARIANT MODAL */}
+      {/* 🔥 VARIANT MODAL (shared) */}
       {variantItem && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-[320px] rounded-xl p-4">
-            <h3 className="font-semibold mb-3">
-              Select {variantItem.name}
-            </h3>
-
-            <div className="space-y-2">
-              {variantItem.portionType.units.map((unit) => (
-                <button
-                  key={unit._id || unit.name}
-                  onClick={() => {
-                    addItem(variantItem, unit);
-                    setVariantItem(null);
-                  }}
-                  className="w-full flex justify-between border rounded-lg px-3 py-2 hover:bg-gray-100"
-                >
-                  <span>{unit.name}</span>
-                  <span className="font-medium">
-                    ₹
-                    {variantItem.portionType.pricingRule === "percentage"
-                      ? (variantItem.price * unit.value) / 100
-                      : unit.value}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setVariantItem(null)}
-              className="mt-3 w-full text-sm text-gray-500"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <VariantModal
+          item={variantItem}
+          cart={cart}
+          onQtyChange={(item, unit, diff) => {
+            const key = `${item._id}_${unit.name}`;
+            if (diff > 0) {
+              addItem(item, unit);
+            } else {
+              changeQty(key, diff);
+            }
+          }}
+          onClose={() => setVariantItem(null)}
+        />
       )}
     {showCreditModal && (
   <CustomerForm

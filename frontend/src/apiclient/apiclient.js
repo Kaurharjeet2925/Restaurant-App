@@ -1,7 +1,7 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL; // http://localhost:5000/api
+const BASE_URL = process.env.REACT_APP_BACKEND_URL + "/api"; // http://localhost:5000/api
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

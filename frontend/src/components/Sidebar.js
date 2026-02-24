@@ -19,6 +19,7 @@ const menu = [
   { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
   { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
   { icon: <List size={20} />, label: "Categories", path: "/categories" },
+  { icon: <List size={20} />, label: "Orders", path: "/view-orders" },
   { icon: <Users size={20} />, label: "Customers", path: "/customers" },
   { icon: <BarChart3 size={20} />, label: "Reports", path: "/reports" },
   { icon: <Settings size={20} />, label: "Settings", path: "/settings" },
@@ -30,24 +31,20 @@ export default function Sidebar({ open, setOpen }) {
 
   return (
     <>
-      {/* Hamburger removed; now controlled from MobileHome */}
-
-      {/* ================= SIDEBAR ================= */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen w-64
-          bg-white shadow-xl px-4 py-6
-          transform transition-transform duration-300
-          ${open ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:static md:block
+          w-64 bg-white shadow-xl px-4 py-6
+          h-screen overflow-y-auto
+          transition-transform duration-300
+
+          ${isMobile ? "fixed top-0 left-0 z-40" : "relative"}
+          ${open || !isMobile ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Logo */}
         <h2 className="text-2xl font-bold text-red-500 mb-8">
           Restro
         </h2>
 
-        {/* Menu */}
         <ul className="space-y-2">
           {menu.map((item, i) => {
             const active = location.pathname.startsWith(item.path);
@@ -56,7 +53,7 @@ export default function Sidebar({ open, setOpen }) {
               <Link
                 key={i}
                 to={item.path}
-                onClick={() => setOpen && setOpen(false)}
+                onClick={() => isMobile && setOpen(false)}
                 className={`
                   flex items-center gap-3 px-4 py-2 rounded-lg transition
                   ${
@@ -74,11 +71,11 @@ export default function Sidebar({ open, setOpen }) {
         </ul>
       </aside>
 
-      {/* ================= OVERLAY (MOBILE ONLY) ================= */}
-      {open && isMobile && (
+      {/* Mobile overlay */}
+      {isMobile && open && (
         <div
-          className="fixed inset-0 bg-black/30 z-30 md:hidden"
-          onClick={() => setOpen && setOpen(false)}
+          className="fixed inset-0 bg-black/30 z-30"
+          onClick={() => setOpen(false)}
         />
       )}
     </>

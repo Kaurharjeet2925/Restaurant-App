@@ -1,7 +1,9 @@
 html, body, #root {
-  width: 100vw;
-  overflow-x: hidden;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* 🔥 KEY */
 }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,7 +25,7 @@ code {
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
-
+ overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 

@@ -18,9 +18,8 @@ const KotCard = ({ kot, reload, isReadyColumn = false }) => {
 
   const startPreparing = async () => {
     try {
-      await apiClient.patch(`/orders/${kot.orderId}/send-to-kitchen`, {
-        orderId: kot.orderId,
-        kotNo: kot.kotNo,
+      await apiClient.patch(`/orders/${kot.orderId}/kot/${kot.kotNo}/status`, {
+        status: "preparing",
       });
       reload();
     } catch {

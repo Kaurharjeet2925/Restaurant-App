@@ -3,6 +3,10 @@ const Table = require("../models/table.model");
 const mongoose = require("mongoose");
 const Customer = require("../models/customer.model");
 const CustomerLedger = require("../models/customerLedger.model");
+const { createNotification } = require("./notification.controller");
+const logActivity = require("../utils/logActivity");
+const autoAdjustOrders = require("../utils/autoAdjustOrders");
+//const CustomerLedger = require("../models/customerLedger.model");
 /* ================= HELPERS ================= */
 const deriveOrderStatus = (order) => {
   // Treat 'served' the same as 'ready' for order-level status calculation
@@ -15,6 +19,11 @@ const deriveOrderStatus = (order) => {
 
 /* ================= CREATE ORDER (KOT-1) ================= */
 exports.createOrder = async (req, res) => {
+  // Only allow superadmin, admin, or waiter roles to create orders
+  const allowedRoles = ["superAdmin", "admin", "waiter"];
+  if (!req.user || !allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: "You do not have permission to create orders." });
+  }
   try {
     const { tableId, items } = req.body;
 
@@ -45,7 +54,58 @@ exports.createOrder = async (req, res) => {
     },
   ],
 });
+  await logActivity({
+  module: "order",
+  action: "CREATE_ORDER",
+  description: "Order created",
+  user: req.user,
+  referenceId: order._id,
+});
 
+    // Format orderId as #ORDxxxx
+    // Always pad orderId to 4 digits for #ORDxxxx
+    const hex = String(order._id).slice(-4).toUpperCase();
+    const padded = hex.padStart(4, '0');
+    const orderDisplayId = `#ORD${padded}`;
+    // 🔔 Create notification for new order (kitchen, admin, superAdmin)
+    const orderMsg = `New order ${orderDisplayId} created for Table ${tableId}`;
+    await createNotification({
+      io: req.io,
+      message: orderMsg,
+      activityType: "order",
+      data: { orderId: order._id, orderDisplayId, tableId },
+      createdBy: req.user?._id,
+      targetRole: "kitchen"
+    });
+    // Only send to admin if not superAdmin
+    if (req.user?.role !== "superAdmin") {
+      await createNotification({
+        io: req.io,
+        message: orderMsg,
+        activityType: "order",
+        data: { orderId: order._id, orderDisplayId, tableId },
+        createdBy: req.user?._id,
+        targetRole: "admin"
+      });
+    }
+    await createNotification({
+      io: req.io,
+      message: orderMsg,
+      activityType: "order",
+      data: { orderId: order._id, orderDisplayId, tableId },
+      createdBy: req.user?._id,
+      targetRole: "superAdmin"
+    });
+
+    // 📜 ACTIVITY LOG
+    await require("../utils/logActivity")({
+      module: "order",
+      action: "CREATE",
+      description: `Order ${orderDisplayId} created for Table ${tableId}`,
+      user: req.user,
+      referenceId: order._id,
+      meta: { items: formattedItems, orderDisplayId }
+    });
 
     await Table.findByIdAndUpdate(tableId, {
       status: "occupied",
@@ -65,6 +125,11 @@ exports.createOrder = async (req, res) => {
 
 /* ================= ADD NEW KOT ================= */
 exports.updateOrder = async (req, res) => {
+  // Only allow superadmin, admin, or waiter roles to update orders
+  const allowedRoles = ["superAdmin", "admin", "waiter"];
+  if (!req.user || !allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: "You do not have permission to update orders." });
+  }
   try {
     const { orderId } = req.params;
     const { items } = req.body; // ONLY new items
@@ -130,6 +195,54 @@ if (!order.orderType) {
     });
 
     await order.save();
+await logActivity({
+  module: "kitchen",
+  action: "ADD_KOT",
+  description: `KOT ${nextKotNo} added`,
+  user: req.user,
+  referenceId: order._id,
+  meta: { kotNo: nextKotNo },
+});
+
+    // 🔔 Create notification for new KOT (kitchen, admin, superAdmin)
+    const orderDisplayId = `#ORD${String(order._id).slice(-4).toUpperCase()}`;
+    const tableInfo = order.tableId?.tableNumber ? `Table ${order.tableId.tableNumber}` : orderDisplayId;
+    const userName = req.user?.name || req.user?.firstName || 'Unknown';
+    const kotMsg = `New KOT ${nextKotNo} created for ${tableInfo} (${orderDisplayId})`;
+    await createNotification({
+      io: req.io,
+      message: kotMsg,
+      activityType: "kitchen",
+      data: { orderId, orderDisplayId, kotNo: nextKotNo },
+      createdBy: req.user?._id,
+      targetRole: "kitchen"
+    });
+    await createNotification({
+      io: req.io,
+      message: kotMsg,
+      activityType: "kitchen",
+      data: { orderId, orderDisplayId, kotNo: nextKotNo },
+      createdBy: req.user?._id,
+      targetRole: "admin"
+    });
+    await createNotification({
+      io: req.io,
+      message: kotMsg,
+      activityType: "kitchen",
+      data: { orderId, orderDisplayId, kotNo: nextKotNo },
+      createdBy: req.user?._id,
+      targetRole: "superAdmin"
+    });
+
+    // 📜 ACTIVITY LOG (only one entry)
+    await require("../utils/logActivity")({
+      module: "order",
+      action: "ADD_KOT",
+      description: `KOT ${nextKotNo} created for ${tableInfo} (${orderDisplayId}) by ${userName}`,
+      user: req.user,
+      referenceId: order._id,
+      meta: { items, orderDisplayId }
+    });
 
     res.json({
       message: "KOT created",
@@ -147,6 +260,11 @@ if (!order.orderType) {
 
 /* ================= SEND KOT TO KITCHEN ================= */
 exports.sendToKitchen = async (req, res) => {
+      // Only allow superadmin, admin, or waiter roles to send to kitchen
+      const allowedRoles = ["superAdmin", "admin", "waiter"];
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "You do not have permission to send orders to kitchen." });
+      }
   try {
     const { orderId } = req.params;
     const { kotNo } = req.body;
@@ -179,6 +297,43 @@ if (!order.orderType) {
 
     await order.save();
 
+    // 🔔 Send notification to admin and superAdmin when KOT moves to preparing
+    const io = req.io;
+    const userId = req.user?._id;
+    const orderIdStr = order._id.toString();
+    const message = `KOT ${kotNo} for Order ${orderIdStr} is now preparing`;
+    const activityType = "kitchen";
+    const data = { orderId: orderIdStr, kotNo, status: "preparing" };
+
+    if (io) {
+      await require("./notification.controller").createNotification({
+        io,
+        message,
+        activityType,
+        data,
+        createdBy: userId,
+        targetRole: "admin"
+      });
+      await require("./notification.controller").createNotification({
+        io,
+        message,
+        activityType,
+        data,
+        createdBy: userId,
+        targetRole: "superAdmin"
+      });
+    }
+
+    // 📜 ACTIVITY LOG
+    await require("../utils/logActivity")({
+      module: "order",
+      action: "SEND_TO_KITCHEN",
+      description: `KOT ${kotNo} for Order ${orderIdStr} moved to preparing`,
+      user: req.user,
+      referenceId: order._id,
+      meta: { kotNo }
+    });
+
     res.json({
       message: `KOT ${kotNo} sent to kitchen`,
       kot,
@@ -190,29 +345,77 @@ if (!order.orderType) {
 };
 
 
-/* ================= UPDATE KOT STATUS (KITCHEN) ================= */
+/* ================= UPDATE KOT STATUS (KITCHEN) ================= */ 
 exports.updateKotStatus = async (req, res) => {
-  const { orderId, kotNo } = req.params;
-  const { status } = req.body;
+  const allowedRoles = ["superAdmin", "admin", "kitchen"];
+  if (!req.user || !allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: "Permission denied" });
+  }
 
- const order = await Order.findById(orderId);
-if (!order.orderType) {
-  order.orderType = "dine_in"; // 🔒 safety fallback
-}
+  const { orderId, kotNo } = req.params;
+  let { status } = req.body;
+  status = status?.toLowerCase();
+
+  const validStatus = ["pending", "preparing", "ready", "served"];
+  if (!validStatus.includes(status)) {
+    return res.status(400).json({ message: "Invalid KOT status" });
+  }
+
+  const order = await Order.findById(orderId);
   if (!order) return res.status(404).json({ message: "Order not found" });
 
   const kot = order.kots.find(k => k.kotNo == kotNo);
   if (!kot) return res.status(404).json({ message: "KOT not found" });
 
-  // update only KOT status
+  // 🚫 prevent duplicate updates
+  if (kot.status === status) {
+    return res.status(400).json({
+      message: `KOT ${kotNo} is already ${status}`,
+    });
+  }
+
   kot.status = status;
-
-
   order.status = deriveOrderStatus(order);
-
   await order.save();
 
-  res.json({
+  // 🔔 Send notification to admin and superAdmin when kitchen updates KOT status
+  const io = req.io;
+  const userId = req.user?._id;
+  const orderIdStr = order._id.toString();
+  const message = `KOT ${kotNo} for Order ${orderIdStr} marked as ${status}`;
+  const activityType = "kitchen";
+  const data = { orderId: orderIdStr, kotNo, status };
+
+  if (io) {
+    await require("./notification.controller").createNotification({
+      io,
+      message,
+      activityType,
+      data,
+      createdBy: userId,
+      targetRole: "admin"
+    });
+    await require("./notification.controller").createNotification({
+      io,
+      message,
+      activityType,
+      data,
+      createdBy: userId,
+      targetRole: "superAdmin"
+    });
+  }
+
+  // 📜 ACTIVITY LOG
+  await require("../utils/logActivity")({
+    module: "order",
+    action: "UPDATE_KOT_STATUS",
+    description: `KOT ${kotNo} for Order ${orderIdStr} marked as ${status}`,
+    user: req.user,
+    referenceId: order._id,
+    meta: { kotNo, status }
+  });
+
+  return res.json({
     message: `KOT ${kotNo} marked ${status}`,
     orderStatus: order.status,
   });
@@ -334,6 +537,33 @@ exports.markKotReady = async (req, res) => {
     order.status = deriveOrderStatus(order);
 
     await order.save();
+    
+    await createNotification({
+  io: req.io,
+  message: `KOT ${kotNo} is ready`,
+  activityType: "kitchen",
+  data: { orderId, kotNo },
+  createdBy: req.user?._id,
+  targetRole: "waiter",
+});
+await createNotification({
+  io: req.io,
+  message: `KOT ${kotNo} is ready`,
+  activityType: "kitchen",
+  data: { orderId, kotNo },
+  createdBy: req.user?._id,
+  targetRole: "admin",
+});
+await createNotification({
+  io: req.io,
+  message: `KOT ${kotNo} is ready`,
+  activityType: "kitchen",
+  data: { orderId, kotNo },
+  createdBy: req.user?._id,
+  targetRole: "superAdmin",
+});
+
+
 
     res.json({
       message: "KOT marked ready",
@@ -346,6 +576,11 @@ exports.markKotReady = async (req, res) => {
 };
 
 exports.generateBillAndPay = async (req, res) => {
+    // Only allow superadmin and admin roles to generate bill and payment
+    const allowedRoles = ["superAdmin", "admin"];
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: "You do not have permission to perform payment." });
+    }
   try {
     const { orderId } = req.params;
     const { taxPercent = 0, servicePercent = 0, discount = 0, paymentMethod = "cash" } = req.body || {};
@@ -405,6 +640,23 @@ exports.generateBillAndPay = async (req, res) => {
     order.status = "completed";
 
     await order.save();
+    await createNotification({
+  io: req.io,
+  message: `Payment completed for Order ${order._id}`,
+  activityType: "payment",
+  data: { orderId: order._id, totalAmount: order.totalAmount },
+  createdBy: req.user?._id,
+  targetRole: "admin",
+});
+
+await createNotification({
+  io: req.io,
+  message: `Payment completed for Order ${order._id}`,
+  activityType: "payment",
+  data: { orderId: order._id, totalAmount: order.totalAmount },
+  createdBy: req.user?._id,
+  targetRole: "superAdmin",
+});
 
     /* ---------------- FREE TABLE ---------------- */
     if (order.tableId) {
@@ -464,6 +716,30 @@ exports.cancelOrder = async (req, res) => {
     order.tableId.currentOrderId = null;
     await order.tableId.save();
   }
+await createNotification({
+  io: req.io,
+  message: `Order ${orderId} cancelled`,
+  activityType: "order",
+  data: { orderId },
+  createdBy: req.user?._id,
+  targetRole: "admin",
+});
+await createNotification({
+  io: req.io,
+  message: `Order ${orderId} cancelled`,
+  activityType: "order",
+  data: { orderId },
+  createdBy: req.user?._id,
+  targetRole: "superAdmin",
+});
+await createNotification({
+  io: req.io,
+  message: `Order ${orderId} cancelled`,
+  activityType: "order",
+  data: { orderId },
+  createdBy: req.user?._id,
+  targetRole: "kitchen",
+});
 
   res.json({ message: "Order cancelled", order });
 };
@@ -558,6 +834,11 @@ exports.editKot = async (req, res) => {
 
 /* ================= COUNTER ORDER + PAY ================= */
 exports.createCounterOrderAndPay = async (req, res) => {
+    // Only allow superadmin and admin roles to perform counter payment
+    const allowedRoles = ["superAdmin", "admin"];
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: "You do not have permission to perform payment." });
+    }
   try {
     const { items, paymentMethod = "cash" } = req.body;
 
@@ -598,6 +879,37 @@ exports.createCounterOrderAndPay = async (req, res) => {
       ],
     });
 
+      // Format orderId as #ORDxxxx
+      const hex = String(order._id).slice(-4).toUpperCase();
+      const padded = hex.padStart(4, '0');
+      const orderDisplayId = `#ORD${padded}`;
+      // 🔔 Create notification for payment (admin, superAdmin)
+      const notifMsg = `Payment completed for ${orderDisplayId}`;
+      await createNotification({
+        io: req.io,
+        message: notifMsg,
+        activityType: "payment",
+        data: { orderId: order._id, orderDisplayId, totalAmount: order.totalAmount },
+        createdBy: req.user?._id,
+        targetRole: "admin"
+      });
+      await createNotification({
+        io: req.io,
+        message: notifMsg,
+        activityType: "payment",
+        data: { orderId: order._id, orderDisplayId, totalAmount: order.totalAmount },
+        createdBy: req.user?._id,
+        targetRole: "superAdmin"
+      });
+      // 📜 ACTIVITY LOG
+      await logActivity({
+        module: "order",
+        action: "COUNTER_ORDER_PAID",
+        description: `Counter order ${orderDisplayId} paid`,
+        user: req.user,
+        referenceId: order._id,
+        meta: { orderDisplayId, totalAmount: order.totalAmount }
+      });
     return res.status(201).json({
       message: "Counter order paid",
       order,
@@ -690,15 +1002,12 @@ exports.createCounterCreditOrder = async (req, res) => {
       return res.status(400).json({ message: "Items required" });
     }
 
-    if (!customerId || !mongoose.Types.ObjectId.isValid(customerId)) {
-      return res.status(400).json({ message: "Valid customerId required" });
-    }
-
     const customer = await Customer.findById(customerId);
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    /* ================= BILL ================= */
     let subTotal = 0;
     const formattedItems = items.map(i => {
       const total = i.price * i.qty;
@@ -709,34 +1018,42 @@ exports.createCounterCreditOrder = async (req, res) => {
     const tax = Number(((subTotal * taxPercent) / 100).toFixed(2));
     const totalAmount = Number((subTotal + tax - discount).toFixed(2));
 
-
-    // 🔹 PREVIOUS DUE (from CustomerLedger, includes advances)
-    const lastLedger = await CustomerLedger.findOne({ customerId: customer._id })
+    /* ================= LEDGER BALANCE ================= */
+    const lastLedger = await CustomerLedger.findOne({ customerId })
       .sort({ createdAt: -1 });
-    const previousDue = lastLedger ? lastLedger.balanceAfter : 0;
 
+    let runningBalance = lastLedger ? lastLedger.balanceAfter : 0;
+
+    /* ================= ADVANCE AUTO-ADJUST ================= */
+    let advanceUsed = 0;
+    let dueAmount = totalAmount;
+    let paymentStatus = "unpaid";
+
+    if (runningBalance < 0) {
+      advanceUsed = Math.min(Math.abs(runningBalance), totalAmount);
+      dueAmount -= advanceUsed;
+      runningBalance += advanceUsed;
+      paymentStatus = dueAmount === 0 ? "paid" : "partial";
+    }
+
+    /* ================= CREATE ORDER ================= */
     const order = await Order.create({
       orderType: "counter",
-
       customer: {
-  customerId: customer._id,
-  name: customer.name,
-  phone: customer.phone,
-},
-
-
+        customerId: customer._id,
+        name: customer.name,
+        phone: customer.phone,
+      },
       items: formattedItems,
       subTotal,
       tax,
       taxPercent,
       discount,
       totalAmount,
-
       paymentType: "credit",
-      paymentStatus: "unpaid",
-      dueAmount: totalAmount,
+      paymentStatus,
+      dueAmount,
       status: "completed",
-
       kots: [
         {
           kotNo: 1,
@@ -746,29 +1063,48 @@ exports.createCounterCreditOrder = async (req, res) => {
       ],
     });
 
-    // 🔥 LEDGER ENTRY (VERY IMPORTANT)
+    /* ================= LEDGER ENTRY : BILL ================= */
+    runningBalance += totalAmount;
+
     await CustomerLedger.create({
-      customerId: customer._id,
+      customerId,
       orderId: order._id,
+      type: "bill",
       debit: totalAmount,
       credit: 0,
-      balanceAfter: previousDue + totalAmount,
-      type: "bill",
+      balanceAfter: runningBalance,
     });
 
+    /* ================= LEDGER ENTRY : ADVANCE USED ================= */
+    if (advanceUsed > 0) {
+      runningBalance -= advanceUsed;
+
+      // await CustomerLedger.create({
+      //   customerId,
+      //   orderId: order._id,
+      //   type: "payment",
+      //   debit: 0,
+      //   credit: advanceUsed,
+      //   balanceAfter: runningBalance,
+      //   note: "Advance auto-adjusted to order",
+      // });
+    }
+
     return res.status(201).json({
-      message: "Counter credit order created",
+      message: "Counter credit order created with auto-adjust",
       order,
       billMeta: {
-        previousDue,
-        currentDue: order.dueAmount,
-        totalDue: previousDue + order.dueAmount,
+        totalAmount,
+        advanceUsed,
+        dueAmount,
+        finalBalance: runningBalance,
       },
     });
+
   } catch (err) {
     console.error("Counter credit error:", err);
     res.status(500).json({
-      message: "Credit order failed",
+      message: "Counter credit order failed",
       error: err.message,
     });
   }
@@ -777,3 +1113,37 @@ exports.createCounterCreditOrder = async (req, res) => {
 
 
 
+
+/* ================= GET ORDERS (FOR TABS) ================= */
+exports.getOrders = async (req, res) => {
+  try {
+    const { status, orderType } = req.query;
+
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (orderType) {
+      filter.orderType = orderType; // dine_in | counter
+    }
+
+    const orders = await Order.find(filter)
+      .populate({
+        path: "tableId",
+        select: "tableNumber area customerId",
+        populate: { path: "area", select: "name" },
+        populate: { path: "customerId", select: "name phone" }
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      count: orders.length,
+      data: orders,
+    });
+  } catch (err) {
+    console.error("Get orders error:", err);
+    res.status(500).json({ message: "Failed to fetch orders" });
+  }
+};

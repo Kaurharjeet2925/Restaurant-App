@@ -7,6 +7,8 @@ import KotHistory from "../Order/KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
 import CartSheet from './CartSheet';
+
+import MenuCard from '../Order/MenuCard';
 import VariantModal from "../MenuItemManaement/VariantModal"
 // Memoized category button for performance
 const CategoryButton = memo(({ label, active, onClick }) => (
@@ -401,7 +403,10 @@ const hasMultipleVariantsInCart = (itemId) =>
 const updateVariantQty = (item, unit, diff) => {
   const key = `${item._id}_${unit.name}`;
 
-  const existing = cart.find((i) => i.key === key);
+ const existing = cart.find(
+  (i) => i.cartKey === key || i.key === key
+);
+
 
   // ➖ decrease
   if (existing && diff < 0) {
@@ -450,102 +455,50 @@ const updateVariantQty = (item, unit, diff) => {
 
       {/* Menu Grid */}
       <div className="flex-1 overflow-y-auto">
-        <div className="grid sm:grid-cols-4 grid-cols-3 gap-2 p-4 pb-32">
-        {filteredMenu.map((item) => {
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-4 pb-40">
+     {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);
   const hasVariants = item.portionType?.units?.length > 1;
   const multipleVariants = hasMultipleVariantsInCart(item._id);
 
   return (
-    <div
-      key={item._id}
-      className="bg-white rounded-xl overflow-hidden border shadow-sm"
-    >
-      {/* IMAGE */}
-      <div
-        className="h-20 bg-slate-200 overflow-hidden cursor-pointer"
-        onClick={() => {
-          if (!hasVariants) {
-            addItem(item, null, 1);
-          } else {
-            setVariantItem(item);
-          }
-        }}
-      >
-        {item.image ? (
-          <img
-            src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
-            className="h-full w-full object-cover"
-            alt={item.name}
-          />
-        ) : (
-          <div className="h-full flex items-center justify-center text-xs text-slate-500">
-            No Image
-          </div>
-        )}
-      </div>
+    <MenuCard
+  item={item}
+  totalQty={totalQty}
 
-      {/* INFO */}
-      <div className="p-2">
-        <h3 className="text-xs font-semibold line-clamp-2">
-          {item.name}
-        </h3>
+  /* CARD CLICK / ADD */
+  onPress={() => {
+    if (hasVariants) {
+      setVariantItem(item);   // ✅ always ask variant
+    } else {
+      addItem(item, null);
+    }
+  }}
 
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-sm font-bold text-[#ff4d4d]">
-            ₹{item.price}
-          </p>
+  /* PLUS */
+  onIncrease={() => {
+    if (hasVariants && multipleVariants) {
+      // ❌ more than one variant → ask user
+      setVariantItem(item);
+    } else {
+      // ✅ only one variant → safe increment
+      changeQty(variantsInCart[0].cartKey, 1);
+    }
+  }}
 
-          {/* ADD / QTY */}
-          {totalQty === 0 ? (
-            <button
-              onClick={() =>
-                hasVariants ? setVariantItem(item) : addItem(item, null, 1)
-              }
-              className="border border-[#ff4d4d] text-[#ff4d4d]
-                         px-3 py-1 rounded-lg text-sm font-semibold"
-            >
-              ADD
-            </button>
-          ) : (
-            <div className="flex items-center border border-[#ff4d4d] rounded-lg">
-              {/* MINUS */}
-              <button
-                className="px-2 text-lg text-[#ff4d4d]"
-                onClick={() => {
-                  if (hasVariants && multipleVariants) {
-                    setVariantItem(item);
-                  } else {
-                    changeQty(variantsInCart[0].key, -1);
-                  }
-                }}
-              >
-                −
-              </button>
+  /* MINUS */
+  onDecrease={() => {
+    if (hasVariants && multipleVariants) {
+      // ❌ more than one variant → ask user
+      setVariantItem(item);
+    } else {
+      // ✅ only one variant → safe decrement
+      changeQty(variantsInCart[0].cartKey, -1);
+    }
+  }}
+/>
 
-              <span className="px-3 text-sm font-semibold">
-                {totalQty}
-              </span>
-
-              {/* PLUS */}
-              <button
-                className="px-2 text-lg text-[#ff4d4d]"
-                onClick={() => {
-                  if (hasVariants) {
-                    setVariantItem(item);
-                  } else {
-                    changeQty(variantsInCart[0].key, 1);
-                  }
-                }}
-              >
-                +
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 })}
 

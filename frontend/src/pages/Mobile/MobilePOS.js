@@ -6,7 +6,7 @@ import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 import VariantModal from "../MenuItemManaement/VariantModal"
-
+import MenuCard from "../Order/MenuCard";
 const printElement = (id, title) => {
   const el = document.getElementById(id);
   if (!el) return toast.warn(`${title} not ready`);
@@ -316,10 +316,14 @@ const updateVariantQty = (item, unit, diff) => {
 <div className="bg-white flex flex-col relative w-full max-w-none">
 
   {/* ================= CATEGORIES (FIXED) ================= */}
- <div className="native-swipe gap-2 px-3 py-2 whitespace-nowrap">
+<div className="native-swipe gap-2 px-3 py-4 whitespace-nowrap">
   <button
     onClick={() => setActiveCat("all")}
-    className="shrink-0 px-4 py-2 rounded-full bg-red-500 text-white"
+    className={`shrink-0 px-4 py-2 rounded-full transition-all font-medium ${
+      activeCat === "all"
+        ? "bg-red-500 text-white shadow-lg"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+    }`}
   >
     All Items
   </button>
@@ -328,7 +332,11 @@ const updateVariantQty = (item, unit, diff) => {
     <button
       key={c}
       onClick={() => setActiveCat(c)}
-      className="shrink-0 px-4 py-2 rounded-full bg-gray-100"
+      className={`shrink-0 px-4 py-2 rounded-full transition-all font-medium ${
+        activeCat === c
+          ? "bg-red-500 text-white shadow-lg"
+          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+      }`}
     >
       {c}
     </button>
@@ -339,139 +347,48 @@ const updateVariantQty = (item, unit, diff) => {
   {/* ================= MENU (ONLY THIS SCROLLS) ================= */}
   <div className="flex-1 overflow-y-auto w-full">
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-4 pb-40 w-full">
-      {filteredMenu.map((item) => (
-        <div
-          key={item._id}
-          className="bg-white rounded-xl overflow-hidden border transition cursor-pointer hover:shadow-lg active:scale-95"
-          onClick={() => {
-            const portion = item.portionType;
-            // ✅ No variant → add directly
-            if (!portion || !portion.units?.length) {
-              addItem(item, null, 1);
-              return;
-            }
-            // ✅ Single unit → add directly
-            if (portion.units.length === 1) {
-              addItem(item, portion.units[0], 1);
-              return;
-            }
-            // ✅ Multiple units → open modal
-            setVariantItem(item);
-          }}
-        >
-          {/* IMAGE */}
-          <div className="h-20 bg-slate-200 overflow-hidden">
-            {item.image ? (
-              <img
-                src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
-                className="h-full w-full object-cover"
-                alt={item.name}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                No Image
-              </div>
-            )}
-          </div>
-          {/* INFO */}
-          <div className="p-2">
-            <h3 className="text-xs font-semibold line-clamp-2">
-              {item.name}
-            </h3>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-sm font-bold text-red-500">
-                ₹{item.price}
-              </p>
-              {(() => {
-const totalQty = getItemTotalQty(item._id);
-const variantsInCart = getItemVariants(item._id);
-const hasVariants = item.portionType?.units?.length > 1;
-const multipleVariants = hasMultipleVariantsInCart(item._id);
+       {filteredMenu.map((item) => {
+  const totalQty = getItemTotalQty(item._id);
+  const variantsInCart = getItemVariants(item._id);
+  const hasVariants = item.portionType?.units?.length > 1;
+  const multipleVariants = hasMultipleVariantsInCart(item._id);
 
-
-  // 👉 NOT ADDED YET
-if (totalQty === 0) {
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        if (hasVariants) {
-          setVariantItem(item); // open variant modal
-        } else {
-          addItem(item, null, 1);
-        }
-      }}
-      className="border border-[#ff4d4d] text-[#ff4d4d] px-3 py-1 rounded-lg text-sm font-semibold"
-    >
-      ADD
-    </button>
+  <MenuCard
+  item={item}
+  totalQty={totalQty}
+  onPress={() => {
+    if (hasVariants) {
+      setVariantItem(item);     // ✅ MODAL OPENS
+    } else {
+      addItem(item, null, 1);
+    }
+  }}
+ onIncrease={() => {
+    if (hasVariants && multipleVariants) {
+      // ❌ more than one variant → ask user
+      setVariantItem(item);
+    } else {
+      // ✅ only one variant → safe increment
+      changeQty(variantsInCart[0].key, 1);
+    }
+  }}
+
+  /* MINUS */
+  onDecrease={() => {
+    if (hasVariants && multipleVariants) {
+      // ❌ more than one variant → ask user
+      setVariantItem(item);
+    } else {
+      // ✅ only one variant → safe decrement
+       changeQty(variantsInCart[0].key, -1);
+    }
+  }}
+/>
+
+
   );
-}
-
-
-  // 👉 ALREADY ADDED → SHOW QTY CONTROLS
-  return (
-  <div className="flex items-center border border-[#ff4d4d] rounded-lg">
-    {/* MINUS */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-
-        if (hasVariants) {
-          if (multipleVariants) {
-            // 🔥 multiple customisations → open modal
-            setVariantItem(item);
-          } else {
-            // single variant → reduce directly
-            changeQty(variantsInCart[0].key, -1);
-          }
-        } else {
-          changeQty(variantsInCart[0].key, -1);
-        }
-      }}
-      className="px-2 text-lg text-[#ff4d4d]"
-    >
-      −
-    </button>
-
-    <span className="px-3 text-sm font-semibold">
-      {totalQty}
-    </span>
-
-    {/* PLUS */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-
-        if (hasVariants) {
-          if (multipleVariants) {
-            // 🔥 ask which customisation
-            setVariantItem(item);
-          } else {
-            // same variant → increase
-            changeQty(variantsInCart[0].key, 1);
-          }
-        } else {
-          changeQty(variantsInCart[0].key, 1);
-        }
-      }}
-      className="px-2 text-lg text-[#ff4d4d]"
-    >
-      +
-    </button>
-  </div>
-);
-
-})()}
-</div>
-
-          </div>
-
-    
-          
-           
-        </div>
-      ))}
+})}
     </div>
   </div>
 {cart.length > 0 && (

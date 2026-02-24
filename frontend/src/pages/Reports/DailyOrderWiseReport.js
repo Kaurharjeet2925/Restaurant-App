@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import apiClient from "../../apiclient/apiclient";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const DailyOrderWiseReport = () => {
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(null);
   const [orders, setOrders] = useState([]);
   const [summary, setSummary] = useState(null);
 
@@ -10,8 +12,9 @@ const DailyOrderWiseReport = () => {
     if (!date) return alert("Please select date");
 
     try {
+      const apiDate = date.toISOString().slice(0, 10);
       const res = await apiClient.get(
-        `/reports/daily-order-wise?date=${date}`
+        `/reports/daily-order-wise?date=${apiDate}`
       );
 
       if (res.data.success) {
@@ -31,11 +34,16 @@ const DailyOrderWiseReport = () => {
       </h2>
 
       {/* FILTER */}
-      <div className="mb-4">
-        <input
-          type="date"
+      <div className="mb-4 flex items-center gap-2">
+        <DatePicker
+          selected={date}
+          onChange={(d) => setDate(d)}
+          dateFormat="dd-MM-yyyy"
+          placeholderText="Select date"
           className="border px-3 py-2"
-          onChange={e => setDate(e.target.value)}
+          showMonthDropdown
+          showYearDropdown
+          dropdownMode="select"
         />
         <button
           onClick={fetchReport}

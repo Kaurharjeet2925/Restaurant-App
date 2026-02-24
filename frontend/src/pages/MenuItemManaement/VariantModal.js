@@ -9,12 +9,14 @@ const VariantModal = ({ item, cart = [], onQtyChange, onClose }) => {
   }, []);
 
   // get qty of specific variant
-  const getQty = (unitName) =>
-    cart.find(
-      (c) =>
-        c.menuItemId === item._id &&
-        c.unit?.name === unitName
-    )?.qty || 0;
+const getQty = (unitName) =>
+  cart.find(
+    (c) =>
+      c.menuItemId === item._id &&
+      (c.selectedUnit?.name === unitName ||
+       c.unit?.name === unitName)
+  )?.qty || 0;
+
 
   // get price of variant
   const getPrice = (unit) =>

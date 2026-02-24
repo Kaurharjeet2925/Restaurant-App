@@ -18,12 +18,14 @@ const {
   collectCreditPayment,
   createCounterCreditOrder,
   markDineInAsCredit,
+  getOrders,
 } = require("../controllers/order.controller");
 
 /* ================= ORDER (WAITER / POS) ================= */
 router.post("/orders", auth, createOrder);
 router.post("/orders/counter", auth, createCounterOrderAndPay);
 router.get("/orders/:orderId", auth, getOrderById);
+router.get("/orders", auth, getOrders);
 router.put("/orders/:orderId", auth, updateOrder);
 
 router.patch("/orders/:orderId/send-to-kitchen", auth, sendToKitchen);
