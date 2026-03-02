@@ -1,27 +1,36 @@
 const Area = require("../models/area.model");
 
-// GET ALL AREAS
+/* ===============================
+   GET AREAS (TENANT SAFE)
+================================ */
 exports.getAreas = async (req, res) => {
   try {
-    const areas = await Area.find(
-    //  {
-    //   tenantId: req.user.tenantId,
-    // }
+    console.log("User:", req.user);
 
-    ).sort({ createdAt: 1 });
+    const areas = await Area.find({
+      restaurantId: req.user.restaurantId,
+    });
+
     res.json(areas);
   } catch (err) {
+    console.error("AREA ERROR:", err); // 👈 add this
     res.status(500).json({ message: "Failed to load areas" });
   }
 };
-
-// CREATE AREA
+/* ===============================
+   CREATE AREA (TENANT SAFE)
+================================ */
 exports.createArea = async (req, res) => {
   try {
+    if (!req.user.restaurantId) {
+      return res.status(400).json({ message: "Restaurant not found" });
+    }
+
     const area = await Area.create({
-      ...req.body,
-     // tenantId: req.user.tenantId
-    }); 
+      name: req.body.name,
+      restaurantId: req.user.restaurantId,
+    });
+
     res.status(201).json(area);
   } catch (err) {
     res.status(400).json({
@@ -33,30 +42,44 @@ exports.createArea = async (req, res) => {
   }
 };
 
-// UPDATE AREA
+/* ===============================
+   UPDATE AREA (TENANT SAFE)
+================================ */
 exports.updateArea = async (req, res) => {
   try {
-    const area = await Area.findByIdAndUpdate({
-      _id: req.params.id,
-   //   tenantId: req.user.tenantId
-    },
+    const area = await Area.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        restaurantId: req.user.restaurantId,
+      },
       req.body,
-
       { new: true }
     );
+
+    if (!area) {
+      return res.status(404).json({ message: "Area not found" });
+    }
+
     res.json(area);
   } catch (err) {
     res.status(400).json({ message: "Failed to update area" });
   }
 };
 
-// DELETE AREA
+/* ===============================
+   DELETE AREA (TENANT SAFE)
+================================ */
 exports.deleteArea = async (req, res) => {
   try {
-    await Area.findByIdAndDelete({
+    const area = await Area.findOneAndDelete({
       _id: req.params.id,
-     // tenantId: req.user.tenantId
+      restaurantId: req.user.restaurantId,
     });
+
+    if (!area) {
+      return res.status(404).json({ message: "Area not found" });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ message: "Failed to delete area" });

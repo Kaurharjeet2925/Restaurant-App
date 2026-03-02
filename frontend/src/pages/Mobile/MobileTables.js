@@ -65,7 +65,7 @@ const handleTableClick = (table) => {
   }, {});
 
   return (
-    <div className="flex-1 p-6">
+    <div className="flex-1 bg-white ">
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
         🍽️ Tables
       </h1>

@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 
 const CustomerLedgerSchema = new mongoose.Schema(
   {
+    restaurantId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Restaurant",
+  required: true,
+  index: true,
+},
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",

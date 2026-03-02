@@ -26,7 +26,11 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       // ✅ Redirect to dashboard for all devices
-      navigate("/dashboard");
+     if (res.data.user.role === "superAdmin") {
+  navigate("/platform/register");
+} else {
+  navigate("/dashboard");
+}
 
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

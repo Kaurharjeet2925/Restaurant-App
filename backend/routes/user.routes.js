@@ -1,39 +1,37 @@
 const router = require("express").Router();
-const { 
-  registerUser,
+
+const {
   loginUser,
-  createUserBySuperAdmin,
+  createStaffUser,
   getAllUsers,
-  getUserById,
+  getMyProfile,
   updateUser,
   deleteUser,
-  getMyProfile,
-} = require("../controllers/user.controllers")
+} = require("../controllers/user.controllers");
 
 const upload = require("../middleware/multer");
-const { registerValidation, loginValidation } = require("../middleware/authValidation");
 const auth = require("../middleware/auth");
-const onlySuperAdmin = require("../middleware/onlySuperAdmin");
-const allowAdminAndSuperAdmin = require("../middleware/allowAdminAndSuperAdmin");
 
-// AUTH
-router.post("/register", registerValidation, registerUser);
-router.post("/login", loginValidation, loginUser);
+/* ===============================
+   AUTH
+================================ */
+router.post("/login", loginUser);
 
-// USERS
-router.get("/all", auth, onlySuperAdmin, getAllUsers);
+// Get all users (multi-tenant safe inside controller)
+router.get("/all", auth, getAllUsers);
+
+// Get my profile
 router.get("/user/me", auth, getMyProfile);
 
+// Create staff (Admin only)
 router.post(
-  "/superAdmin/create-user",
+  "/staff",
   auth,
-  allowAdminAndSuperAdmin,
   upload.single("image"),
-  createUserBySuperAdmin
+  createStaffUser
 );
 
-router.get("/user/:id", auth, getUserById);
-
+// Update user
 router.put(
   "/user/:id",
   auth,
@@ -41,6 +39,7 @@ router.put(
   updateUser
 );
 
-router.delete("/user/:id", auth, onlySuperAdmin, deleteUser);
+// Delete user
+router.delete("/user/:id", auth, deleteUser);
 
 module.exports = router;

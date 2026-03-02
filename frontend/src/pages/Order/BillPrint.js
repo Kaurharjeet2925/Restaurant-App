@@ -37,7 +37,7 @@ const BillPrint = ({ order, billMeta }) => {
 
       <hr />
 
-      <div>Order No: #ORD{order._id.slice(-4).toUpperCase()}</div>
+      <div>Order No: {order.orderNumber}</div>
       {order.tableId && <div>Table: {order.tableId.tableNumber}</div>}
       {area && <div>Area: {area}</div>}
 

@@ -16,11 +16,11 @@ const orderItemSchema = new mongoose.Schema({
     min: 1,
   },
   total: Number,
-  status: {
-    type: String,
-    enum: ["pending", "prepared"],
-    default: "pending",
-  },
+ status: {
+  type: String,
+  enum: ["pending", "preparing", "prepared", "served"],
+  default: "pending",
+},
 });
 
 /* ================= KOT ================= */
@@ -37,9 +37,37 @@ const kotSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/* ================= ORDER COUNTER ================= */
+const orderCounterSchema = new mongoose.Schema({
+   restaurantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Restaurant",
+    required: true,
+    index: true,
+  },
+  orderType: {
+    type: String,
+    enum: ["dine_in", "counter"],
+    required: true,
+  },
+  counter: {
+    type: Number,
+    default: 0,
+  },
+});
+
+const OrderCounter = mongoose.model("OrderCounter", orderCounterSchema);
+
 /* ================= ORDER ================= */
 const orderSchema = new mongoose.Schema(
-  {
+  
+ {
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
     /* 🔹 ORDER TYPE */
     orderType: {
       type: String,
@@ -58,13 +86,13 @@ const orderSchema = new mongoose.Schema(
 
     /* 🔹 CUSTOMER (DINE-IN OR CREDIT) */
     customer: {
-  customerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Customer",
-  },
-  name: String,
-  phone: String,
-},
+      customerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer",
+      },
+      name: String,
+      phone: String,
+    },
 
     items: [orderItemSchema],
     kots: [kotSchema],
@@ -72,8 +100,8 @@ const orderSchema = new mongoose.Schema(
     /* 🔹 ORDER STATUS */
     status: {
       type: String,
-      enum: ["draft", "sent_to_kitchen", "preparing", "ready", "completed"],
-      default: "draft",
+      enum: ["pending", "processing", "served", "completed", "cancelled"],
+      default: "pending",
     },
 
     /* 🔹 PAYMENT MODE */
@@ -110,17 +138,34 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* 🔐 VALIDATION: CUSTOMER REQUIRED FOR DINE-IN OR CREDIT */
-// orderSchema.pre("validate", function () {
-//   if (
-//     (this.orderType === "dine_in" || this.paymentType === "credit") &&
-//     (!this.customer?.name || !this.customer?.phone)
-//   ) {
-//     throw new Error(
-//       "Customer name and phone required for dine-in or credit order"
-//     );
-//   }
-// });
+/* 🔐 PRE-SAVE HOOK: GENERATE ORDER NUMBER */
+orderSchema.pre("save", async function (next) {
+  if (this.isNew) {
+    try {
+     const counterDoc = await OrderCounter.findOneAndUpdate(
+  {
+    restaurantId: this.restaurantId,
+    orderType: this.orderType,
+  },
+  { $inc: { counter: 1 } },
+  { new: true, upsert: true }
+);
 
+      const counterValue = counterDoc.counter.toString().padStart(5, "0");
+      this.orderNumber =
+        this.orderType === "dine_in" ? `DINE${counterValue}` : `POS${counterValue}`;
+    } catch (error) {
+      if (typeof next === "function") {
+        next(error);
+      } else {
+        throw error; 
+      }
+      return; 
+    }
+  }
+  if (typeof next === "function") {
+    next();
+  }
+});
 
 module.exports = mongoose.model("Order", orderSchema);

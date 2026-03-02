@@ -34,7 +34,7 @@ const AddCategory = ({ category = {}, refresh }) => {
       }
 
       setIsChanged(false);
-      refresh(); // 🔥 THIS WILL NOW WORK CORRECTLY
+      refresh(); 
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed");
     } finally {

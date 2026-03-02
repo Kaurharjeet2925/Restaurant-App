@@ -18,7 +18,7 @@ const [showPayModal, setShowPayModal] = useState(false);
   const fetchCustomers = async () => {
     const url =
       view === "credit"
-        ? "/customer/credit"   // 🔥 credit customers API
+        ? "/customers/credit"   // 🔥 credit customers API
         : "/customers";
 
     const res = await apiClient.get(url);

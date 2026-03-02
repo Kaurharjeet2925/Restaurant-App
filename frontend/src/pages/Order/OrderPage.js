@@ -38,7 +38,7 @@ const getDefaultUnit = (portionType) => {
   // ✅ SINGLE SOURCE OF TRUTH
   const [order, setOrder] = useState(null);
   const orderDisplayId = useMemo(
-    () => (order?._id ? `ORD${String(order._id).slice(-4).toUpperCase()}` : ""),
+    () => order?.orderNumber || "",
     [order]
   );
   
@@ -403,6 +403,10 @@ const handleCashPayment = async () => {
 
     toast.success("Payment successful");
 
+    // Display the order number in a toast
+    // const orderNumber = res.data.order.orderNumber; // Use the order number directly
+    // toast.info(`Order Number: ${orderNumber}`);
+
     setOrder(res.data.order);
     setCheckoutMode(false);
 
@@ -723,10 +727,7 @@ const updateVariantQty = (item, unit, diff) => {
       }`}
 >
   Send & Print KOT
-</button>
-
-
-    {/* KOT HISTORY (scrollable) */}
+</button>  
   {!isCheckout && order && (
   <div className="mt-4">
     {order.kots && order.kots.length > 0 ? (

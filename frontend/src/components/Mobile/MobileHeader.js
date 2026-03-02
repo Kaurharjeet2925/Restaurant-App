@@ -1,4 +1,5 @@
 import React from "react";
+import NotificationBell from "../NotificationBell";
 
 export default function MobileHeader({ onHamburgerClick }) {
   return (
@@ -30,6 +31,11 @@ export default function MobileHeader({ onHamburgerClick }) {
         <h1 className="text-xl font-bold text-white tracking-wide">
           Restro POS
         </h1>
+
+        {/* Notification Bell */}
+        <div className="absolute top-3 right-4 text-white hover:text-red-500">
+          <NotificationBell  />
+        </div>
 
         {/* Spacer to balance hamburger */}
         <div className="w-8" />

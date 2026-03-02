@@ -6,11 +6,11 @@ module.exports = (req, res, next) => {
     }
   
     // ALLOW THESE ROLES
-    const allowed = ["superAdmin", "admin"];
+    const allowed = ["owner", "admin"];
   
     if (!allowed.includes(req.user.role)) {
       return res.status(403).json({
-        message: `Access denied: Only admin or superAdmin allowed. Your role: ${req.user.role}`
+        message: `Access denied: Only admin or owner allowed. Your role: ${req.user.role}`
       });
     }
   

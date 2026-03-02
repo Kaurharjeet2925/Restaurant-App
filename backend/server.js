@@ -20,7 +20,7 @@ const areaRoutes = require("./routes/area.routes");
 const reportRoutes = require("./routes/report.routes");
 const portionTypeRoutes = require("./routes/portionType.routes");
 const notificationRoutes = require("./routes/notification.routes");
-
+const restaurantRoutes = require("./routes/restaurant.routes");
 const app = express();
 const server = http.createServer(app);
 
@@ -74,6 +74,7 @@ app.use((req, res, next) => {
 // -------------------------------------
 // ✅ ROUTES
 // -------------------------------------
+app.use("/api",restaurantRoutes); // ✅ ADDED
 app.use("/api", userRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", menuRoutes);
@@ -118,23 +119,27 @@ io.on("connection", (socket) => {
     "| User:",
     user.name,
     "| Role:",
-    user.role
+    user.role,
+    "| Restaurant:",
+    user.restaurantId
   );
 
-  // optional auto-join based on user role
-  socket.join(`role:${user.role}`);
+  // 🔥 TENANT SAFE ROOMS
+  if (user.restaurantId) {
+    socket.join(`restaurant:${user.restaurantId}:role:${user.role}`);
+    socket.join(`restaurant:${user.restaurantId}:user:${user._id}`);
 
-  socket.on("joinUserRoom", (userId) => {
-  if (!userId) return;
-  socket.join(`user:${userId}`);
-  console.log(`✅ Joined user:${userId}`);
-});
+    console.log(
+      `✅ Joined rooms:
+      restaurant:${user.restaurantId}:role:${user.role}
+      restaurant:${user.restaurantId}:user:${user._id}`
+    );
+  }
 
   socket.on("disconnect", () => {
     console.log("🔌 Socket disconnected:", socket.id);
   });
 });
-
 
 // -------------------------------------
 // ✅ START SERVER

@@ -1,21 +1,25 @@
-
 const Notification = require("../models/notification.model");
 const logActivity = require("../utils/logActivity");
 
 /* ================= CREATE NOTIFICATION ================= */
 exports.createNotification = async ({
   io,
+  restaurantId, // 🔥 REQUIRED
   message,
   title = null,
   activityType,
   targetUser = null,
   targetRole = null,
   data = {},
-  createdBy = null, // 👈 pass req.user when available
+  createdBy = null,
 }) => {
   try {
-    console.log('[createNotification] called with:', { message, title, activityType, targetUser, targetRole, data, createdBy });
+    if (!restaurantId) {
+      throw new Error("restaurantId is required for notification");
+    }
+
     const notification = await Notification.create({
+      restaurantId,
       title,
       message,
       activityType,
@@ -23,35 +27,26 @@ exports.createNotification = async ({
       targetRole,
       data,
     });
-    console.log('[createNotification] Notification created:', notification);
 
-    /* 🔔 SOCKET EMIT */
+    /* 🔔 SOCKET EMIT (TENANT SAFE) */
     if (io) {
       if (targetUser) {
-        console.log(`[createNotification] Emitting to user:${targetUser}`);
-        io.to(`user:${targetUser}`).emit("notification", notification);
+        io.to(`restaurant:${restaurantId}:user:${targetUser}`)
+          .emit("notification", notification);
       }
+
       if (targetRole) {
-        console.log(`[createNotification] Emitting to role:${targetRole}`);
-        io.to(`role:${targetRole}`).emit("notification", notification);
-        // Always send to admin and superAdmin if kitchen
-        if (targetRole === "kitchen") {
-          io.to("role:admin").emit("notification", notification);
-          io.to("role:superAdmin").emit("notification", notification);
-        }
+        io.to(`restaurant:${restaurantId}:role:${targetRole}`)
+          .emit("notification", notification);
       }
-    } else {
-      console.log('[createNotification] No io instance provided');
     }
 
     /* 📜 ACTIVITY LOG */
     if (createdBy) {
-      let userName = createdBy.name || createdBy.firstName || 'Unknown';
-      let desc = `${message} (by ${userName})`;
       await logActivity({
         module: "notification",
         action: "CREATED",
-        description: desc,
+        description: message,
         user: createdBy,
         referenceId: notification._id,
         meta: { targetUser, targetRole, activityType },
@@ -65,7 +60,6 @@ exports.createNotification = async ({
   }
 };
 
-
 /* ================= GET NOTIFICATIONS ================= */
 exports.getNotifications = async (req, res) => {
   try {
@@ -76,16 +70,15 @@ exports.getNotifications = async (req, res) => {
 
     let filter = {
       isDeleted: false,
+      restaurantId: user.restaurantId, // 🔥 TENANT FILTER
     };
 
-    // 🔥 Admin & SuperAdmin see EVERYTHING
-    if (user.role === "admin" || user.role === "superAdmin") {
+    if (user.role === "admin" || user.role === "owner") {
       filter.$or = [
         { targetUser: user._id },
-        { targetRole: { $in: ["admin", "superAdmin", "kitchen", "waiter", "cashier"] } },
+        { targetRole: { $exists: true } },
       ];
     } else {
-      // Normal users see only their own role / personal notifications
       filter.$or = [
         { targetUser: user._id },
         { targetRole: user.role },
@@ -124,6 +117,7 @@ exports.markRead = async (req, res) => {
 
     const notif = await Notification.findOne({
       _id: req.params.id,
+      restaurantId: user.restaurantId, // 🔥 TENANT SAFE
       isDeleted: false,
     });
 
@@ -143,7 +137,6 @@ exports.markRead = async (req, res) => {
     notif.read = true;
     await notif.save();
 
-    /* 📜 ACTIVITY LOG */
     await logActivity({
       module: "notification",
       action: "READ",
@@ -167,6 +160,7 @@ exports.markAllRead = async (req, res) => {
     const filter = {
       isDeleted: false,
       read: false,
+      restaurantId: user.restaurantId, // 🔥 TENANT SAFE
       $or: [
         { targetUser: user._id },
         { targetRole: user.role },
@@ -177,7 +171,6 @@ exports.markAllRead = async (req, res) => {
       $set: { read: true },
     });
 
-    /* 📜 ACTIVITY LOG */
     if (result.modifiedCount > 0) {
       await logActivity({
         module: "notification",
@@ -197,4 +190,3 @@ exports.markAllRead = async (req, res) => {
     res.status(500).json({ message: "Failed to mark all read" });
   }
 };
-

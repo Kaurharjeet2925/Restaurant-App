@@ -3,7 +3,9 @@ const PortionType = require("../models/portionType.model")
 
 // GET all portion types
 exports.getPortionTypes = async (req, res) => {
-  const data = await PortionType.find();
+  const data = await PortionType.find({
+      restaurantId: req.user.restaurantId,
+    });
   res.json(data);
 };
 
@@ -13,8 +15,9 @@ exports.savePortionType = async (req, res) => {
 
   const portion = await PortionType.findOneAndUpdate(
     { type },
-    { pricingRule, units },
+    { pricingRule, units, restaurantId: req.user.restaurantId },
     { upsert: true, new: true }
+
   );
 
   res.json(portion);
@@ -28,7 +31,8 @@ exports.updatePortionType = async (req, res) => {
 
   const updated = await PortionType.findByIdAndUpdate(
     id,
-    { units },
+
+    { units,restaurantId: req.user.restaurantId },
     { new: true }
   );
 

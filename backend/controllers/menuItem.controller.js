@@ -20,6 +20,7 @@ exports.createItem = async (req, res) => {
       foodType: foodType || "veg",
       portionType: portionType || null, // ✅ optional
       image,
+      restaurantId: req.user.restaurantId, // ✅ ensure tenant isolation
     });
 
     res.status(201).json({
@@ -40,7 +41,7 @@ exports.createItem = async (req, res) => {
 // --------------------------------------
 exports.getItems = async (req, res) => {
   try {
-    const items = await MenuItem.find()
+    const items = await MenuItem.find({ restaurantId: req.user.restaurantId })
       .populate("category", "name")
       .populate("portionType", "pricingRule units type")
       .sort({ createdAt: -1 });
@@ -69,15 +70,19 @@ exports.updateItem = async (req, res) => {
       available,
       foodType,
       portionType, // ✅ added
+      restaurantId: req.user.restaurantId, // ✅ ensure tenant isolation
+
     };
 
     if (req.file) {
       updateData.image = `/uploads/${req.file.filename}`;
     }
 
-    const item = await MenuItem.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-    });
+    const item = await MenuItem.findOneAndUpdate(
+      { _id: req.params.id, restaurantId: req.user.restaurantId },
+      updateData,
+      { new: true }
+    );
 
     if (!item) {
       return res.status(404).json({ message: "Menu item not found" });
@@ -101,7 +106,10 @@ exports.updateItem = async (req, res) => {
 // --------------------------------------
 exports.deleteItem = async (req, res) => {
   try {
-    const item = await MenuItem.findByIdAndDelete(req.params.id);
+    const item = await MenuItem.findOneAndDelete({
+      _id: req.params.id,
+      restaurantId: req.user.restaurantId,
+    });
 
     if (!item) {
       return res.status(404).json({ message: "Menu item not found" });

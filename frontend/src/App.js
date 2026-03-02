@@ -2,19 +2,20 @@ import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import RegisterRestaurant from "./pages/Platform/RegisterRestaurant";
+import PlatformLayout from "./components/PlatformLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Tables from "./pages/Tables/Tables";
 import OrderPage from "./pages/Order/OrderPage";
 import CounterPOS from "./pages/Order/CouterPOS";
-
+import AdminLayout from "./components/AdminLayout";
 import MobileHome from "./pages/Mobile/MobileHome";
 import MobileTables from "./pages/Mobile/MobileTables";
 import MobilePOS from "./pages/Mobile/MobilePOS";
 import MobileOrderPage from "./pages/Mobile/MobileOrderPage";
 import MobilePageWrapper from "./pages/Mobile/MobilePageWrapper";
-
+import PlatformDashboard from "./pages/Platform/PlatformDashboard";
 import Categories from "./pages/CategoryManagement/Categories";
 import MenuItems from "./pages/MenuItemManaement/MenuItems";
 import Customers from "./pages/CategoryManagement/Customers/Customers";
@@ -22,47 +23,50 @@ import CustomerLedger from "./pages/CategoryManagement/Customers/CustomerLedger"
 import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 import Settings from "./pages/settings/Settings";
 import AddUser from "./pages/settings/User/AddUser";
-import DailyOrderWiseReport from "./pages/Reports/DailyOrderWiseReport";
+import  SalesReport from "./pages/Reports/DailyOrderWiseReport";
 import ActivityLog from "./pages/ActivityLogs";
-import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
+
 import { useResponsive } from "./hooks/usResponsive";
 import ViewOrders from "./pages/Order/ViewOrder"
 import { NotificationProvider } from "./context/NotificationContext";
 import { initSocket } from "./socket/socketClient";
 
 /* =========================
-   🔒 Protected Route
+   🔒 Restaurant Route
 ========================= */
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/" replace />;
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!token) return <Navigate to="/" replace />;
+
+  // Block superAdmin from restaurant system
+  if (user?.role === "superAdmin") {
+    return <Navigate to="/platform/register" replace />;
+  }
+
+  return children;
 };
 
 /* =========================
-   🧱 Desktop Layout
+   🔒 Platform Route
 ========================= */
-const AdminLayout = ({ children }) => {
-  return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+const PlatformRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user"));
 
-      <div className="flex-1 flex flex-col">
-        <Navbar />
+  if (!token) return <Navigate to="/" replace />;
 
-        {/* ONLY THIS SCROLLS */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+  // Allow only superAdmin to access platform routes
+  if (user?.role === "superAdmin") {
+    return children;
+  }
+
+  return <Navigate to="/dashboard" replace />; // Redirect non-superAdmin users
 };
 
 
-/* =========================
-   📱 / 💻 Responsive Layout Wrapper
-========================= */
+
 const ResponsiveLayout = ({ mobile, desktop }) => {
   const { isMobile } = useResponsive();
   return isMobile ? mobile : desktop;
@@ -77,18 +81,35 @@ function App() {
     }
   }, []);
 
-  return (
-    <>
-      <NotificationProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* 🔐 LOGIN */}
-            <Route path="/" element={<Login />} />
+ return (
+  <>
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
 
-            {/* =========================
-                🏠 DASHBOARD
-            ========================= */}
-            <Route
+          {/* LOGIN */}
+          <Route path="/" element={<Login />} />
+
+          {/* =========================
+              PLATFORM ROUTES
+          ========================= */}
+          <Route
+            path="/platform/*"
+            element={
+              <PlatformRoute>
+                <PlatformLayout />
+              </PlatformRoute>
+            }
+          >
+            <Route index element={<Navigate to="register" replace />} />
+            <Route path="register" element={<RegisterRestaurant />} />
+            <Route path="dashboard" element={<PlatformDashboard />} />
+          </Route>
+
+          {/* =========================
+              RESTAURANT ROUTES
+          ========================= */}
+        <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
@@ -141,9 +162,18 @@ function App() {
   path="/view-orders"
   element={
     <ProtectedRoute>
-      <AdminLayout>
-        <ViewOrders />
-      </AdminLayout>
+      <ResponsiveLayout
+        mobile={
+          <MobilePageWrapper>
+            <ViewOrders />
+          </MobilePageWrapper>
+        }
+        desktop={
+          <AdminLayout>
+            <ViewOrders />
+          </AdminLayout>
+        }
+      />
     </ProtectedRoute>
   }
 />
@@ -355,12 +385,12 @@ function App() {
                   <ResponsiveLayout
                     mobile={
                       <MobilePageWrapper>
-                        <DailyOrderWiseReport />
+                        <SalesReport />
                       </MobilePageWrapper>
                     }
                     desktop={
                       <AdminLayout>
-                        <DailyOrderWiseReport />
+                        <SalesReport />
                       </AdminLayout>
                     }
                   />
@@ -368,12 +398,12 @@ function App() {
               }
             />
           </Routes>
-        </BrowserRouter>
-      </NotificationProvider>
+      </BrowserRouter>
+    </NotificationProvider>
 
-      <ToastContainer position="top-right" autoClose={2000} />
-    </>
-  );
+    <ToastContainer position="top-right" autoClose={2000} />
+  </>
+);
 }
 
 export default App;

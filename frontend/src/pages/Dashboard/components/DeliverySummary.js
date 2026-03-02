@@ -1,14 +1,8 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-const data = [
-  { name: "Completed", value: 58 },
-  { name: "Processing", value: 27 },
-  { name: "Pending", value: 15 },
-];
-
 const COLORS = ["#22C55E", "#F97316", "#CBD5E1"];
 
-export default function DeliverySummary() {
+export default function DeliverySummary({ data }) {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
       <h3 className="font-semibold mb-4">Order Status</h3>
@@ -26,7 +20,7 @@ export default function DeliverySummary() {
                 dataKey="value"
               >
                 {data.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index]} />
+                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>
@@ -39,7 +33,7 @@ export default function DeliverySummary() {
             <div key={i} className="flex items-center gap-3">
               <span
                 className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: COLORS[i] }}
+                style={{ backgroundColor: COLORS[i % COLORS.length] }}
               />
               <span className="text-gray-600">{d.name}</span>
               <span className="font-semibold">{d.value}%</span>

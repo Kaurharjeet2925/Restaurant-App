@@ -4,6 +4,12 @@ const tableSchema = new mongoose.Schema(
   {
    
 
+ restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
 
     tableNumber: {
       type: String,

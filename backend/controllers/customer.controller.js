@@ -11,7 +11,7 @@ exports.createCustomer = async (req, res) => {
       return res.status(400).json({ message: "Name & phone required" });
     }
 
-    const customer = await Customer.create({ name, phone, address });
+    const customer = await Customer.create({ name, phone, address , restaurantId: req.user.restaurantId });
 
     res.status(201).json(customer);
   } catch (err) {
@@ -22,7 +22,7 @@ exports.createCustomer = async (req, res) => {
 /* ================= READ ================= */
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const customers = await Customer.find({ restaurantId: req.user.restaurantId }).sort({ createdAt: -1 });
     res.status(200).json(customers);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -34,8 +34,8 @@ exports.updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updated = await Customer.findByIdAndUpdate(
-      id,
+    const updated = await Customer.findOneAndUpdate(
+      { _id: id, restaurantId: req.user.restaurantId },
       req.body,
       { new: true }
     );
@@ -55,7 +55,15 @@ exports.deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await Customer.findByIdAndDelete(id);
+    const deleted = await Customer.findOneAndDelete({
+      _id: id,
+      restaurantId: req.user.restaurantId,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
     res.status(200).json({ message: "Customer deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -69,7 +77,7 @@ exports.getCustomerByPhone = async (req, res) => {
       return res.status(400).json({ message: "Phone number required" });
     }
 
-    const customer = await Customer.findOne({ phone }).lean();
+    const customer = await Customer.findOne({ phone, restaurantId: req.user.restaurantId }).lean();
 
     // IMPORTANT: return null if not found
     return res.status(200).json(customer || null);
@@ -83,27 +91,28 @@ exports.getCustomerByPhone = async (req, res) => {
 exports.getCreditCustomers = async (req, res) => {
   try {
     // Step 1: Get all unique credit customers from orders
-    const customers = await Order.aggregate([
-      {
-        $match: {
-          paymentType: "credit",
-          paymentStatus: { $ne: "paid" },
-          "customer.customerId": { $exists: true },
-        },
-      },
-      {
-        $group: {
-          _id: "$customer.customerId",
-          name: { $first: "$customer.name" },
-          phone: { $first: "$customer.phone" },
-        },
-      },
-    ]);
+   const customers = await Order.aggregate([
+  {
+    $match: {
+      restaurantId: req.user.restaurantId,   // 🔥 REQUIRED
+      paymentType: "credit",
+      paymentStatus: { $ne: "paid" },
+      "customer.customerId": { $exists: true },
+    },
+  },
+  {
+    $group: {
+      _id: "$customer.customerId",
+      name: { $first: "$customer.name" },
+      phone: { $first: "$customer.phone" },
+    },
+  },
+]);
 
     // Step 2: For each customer, get their latest ledger balance
     const results = await Promise.all(
       customers.map(async (c) => {
-        const lastLedger = await CustomerLedger.findOne({ customerId: c._id }).sort({ createdAt: -1 });
+        const lastLedger = await CustomerLedger.findOne({ customerId: c._id, restaurantId: req.user.restaurantId }).sort({ createdAt: -1 });
         return {
           customerId: c._id,
           name: c.name,
@@ -133,7 +142,7 @@ exports.getCustomerLedger = async (req, res) => {
 
     const customerId = new mongoose.Types.ObjectId(id);
 
-    const ledger = await CustomerLedger.find({ customerId })
+    const ledger = await CustomerLedger.find({ customerId, restaurantId: req.user.restaurantId })
       .sort({ createdAt: 1 });
 
     let totalDebit = 0;
@@ -189,11 +198,12 @@ exports.payCreditAmount = async (req, res) => {
     const updatedOrders = [];
 
     /* ================= FETCH UNPAID CREDIT ORDERS (FIFO) ================= */
-    const orders = await Order.find({
-      paymentType: "credit",
-      paymentStatus: { $ne: "paid" },
-      "customer.customerId": customerId,
-    }).sort({ createdAt: 1 });
+   const orders = await Order.find({
+  restaurantId: req.user.restaurantId,   // 🔥 REQUIRED
+  paymentType: "credit",
+  paymentStatus: { $ne: "paid" },
+  "customer.customerId": customerId,
+}).sort({ createdAt: 1 });
 
     /* ================= AUTO-ADJUST AGAINST ORDERS ================= */
     for (const order of orders) {
@@ -221,8 +231,10 @@ exports.payCreditAmount = async (req, res) => {
     }
 
     /* ================= LEDGER BALANCE ================= */
-    const lastLedger = await CustomerLedger.findOne({ customerId })
-      .sort({ createdAt: -1 });
+   const lastLedger = await CustomerLedger.findOne({
+  customerId,
+  restaurantId: req.user.restaurantId,   // 🔥 REQUIRED
+}).sort({ createdAt: -1 });
 
     let runningBalance = lastLedger ? lastLedger.balanceAfter : 0;
 
@@ -230,13 +242,14 @@ exports.payCreditAmount = async (req, res) => {
     if (paidAmount > 0) {
       runningBalance -= paidAmount;
 
-      await CustomerLedger.create({
-        customerId,
-        type: "payment",
-        credit: paidAmount,
-        balanceAfter: runningBalance,
-        note: `Credit payment (${paymentMethod})`,
-      });
+   await CustomerLedger.create({
+  customerId,
+  restaurantId: req.user.restaurantId,  // 🔥 REQUIRED
+  type: "payment",
+  credit: paidAmount,
+  balanceAfter: runningBalance,
+  note: `Credit payment (${paymentMethod})`,
+});
     }
 
     /* ================= LEDGER ENTRY : ADVANCE (OPTIONAL) ================= */
@@ -278,7 +291,7 @@ exports.getCustomerById = async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ message: "Customer ID required" });
 
-    const customer = await Customer.findById(id);
+    const customer = await Customer.findOne({ _id: id, restaurantId: req.user.restaurantId });
     if (!customer) return res.status(404).json({ message: "Customer not found" });
 
     res.status(200).json(customer);

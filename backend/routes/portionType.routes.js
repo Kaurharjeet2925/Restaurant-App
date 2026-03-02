@@ -1,27 +1,28 @@
 const router = require("express").Router();
 const auth = require("../middleware/auth");
-const onlySuperAdmin = require("../middleware/onlySuperAdmin");
+const onlyAdmin = require("../middleware/onlyAdmin");
 const portionCtrl = require("../controllers/portionType.contoller");
+const allowAdminAndOwner = require("../middleware/allowAdminAndOwner");
 
 // MENU CONFIGURATION (SUPER ADMIN ONLY)
 router.get(
   "/portion-types",
   auth,
-  onlySuperAdmin,
+  allowAdminAndOwner,
   portionCtrl.getPortionTypes
 );
 
 router.post(
   "/portion-types",
   auth,
-  onlySuperAdmin,
+  allowAdminAndOwner,
   portionCtrl.savePortionType
 );
 
 router.put(
   "/portion-types/:id",
   auth,
-  onlySuperAdmin,
+  allowAdminAndOwner  ,
   portionCtrl.updatePortionType
 );
 

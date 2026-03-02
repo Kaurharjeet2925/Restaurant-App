@@ -1,38 +1,91 @@
-import React from 'react';
-import StatCard from './components/StatCard';
-import RecentOrders from './components/RecentOrders';
-import DeliverySummary from './components/DeliverySummary';
-import KitchenOrdersBoard from './components/kitchenOrdersVoard';
-import PaymentStatusChart from './components/paymentStatusChart';
+import React, { useState, useEffect } from "react";
+import StatCard from "./components/StatCard";
+import SalesLineChart from "./components/SalesLineChart";
+import TopSellingItems from "./components/TopSellingItems";
+import PaymentStatusChart from "./components/paymentStatusChart";
+import apiClient from "../../apiclient/apiclient";
+import KitchenMonitor from "./components/KitchenMonitor";
+import KitchenStats from "./components/KitchenStats";
 const Dashboard = () => {
-  return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Restaurant Dashboard</h1>
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalSales: 0,
+    itemsSold: 0,
+  });
 
-      {/* Top Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Today's Orders" value="34" />
-        <StatCard title="Today's Sales" value="₹12,450" />
-        <StatCard title="Pending Orders" value="6" />
-        <StatCard title="Cancelled Orders" value="2" />
-        <StatCard title="Items Sold" value="87" />
+  const [salesTrend, setSalesTrend] = useState([]);
+  const [topItems, setTopItems] = useState([]);
+  const [paymentStats, setPaymentStats] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const { data } = await apiClient.get("/dashboard/stats");
+
+        setStats({
+          totalOrders: data.stats?.totalOrders || 0,
+          totalSales: data.stats?.totalSales || 0,
+          itemsSold: data.stats?.itemsSold || 0,
+        });
+
+        setSalesTrend(data.salesTrend || []);
+        setTopItems(data.topItems || []);
+        setPaymentStats(data.paymentStats || []);
+      } catch (error) {
+        console.error("Dashboard error", error);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
+
+  const avgOrderValue =
+    stats.totalOrders > 0
+      ? Math.round(stats.totalSales / stats.totalOrders)
+      : 0;
+
+  return (
+    <div className="p-6 bg-white min-h-screen">
+      <h1 className="text-2xl font-bold mb-6 text-slate-800">
+        Restaurant Dashboard
+      </h1>
+
+      {/* KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <StatCard title="Today's Revenue" value={`₹${stats.totalSales}`} highlight />
+        <StatCard title="Orders Today" value={stats.totalOrders} />
+        <StatCard title="Avg Order Value" value={`₹${avgOrderValue}`} />
+        <StatCard title="Items Sold" value={stats.itemsSold} />
       </div>
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+
+      {/* SALES TREND + PAYMENT */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         <div className="lg:col-span-2">
-          <KitchenOrdersBoard />
+          <SalesLineChart data={salesTrend} />
         </div>
-        <PaymentStatusChart />
+
+        <PaymentStatusChart paymentData={paymentStats} />
       </div>
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2">
-          <RecentOrders />
+
+      {/* TOP PRODUCTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+
+        {/* Top Items (2 columns) */}
+        <div className="lg:col-span-2 flex flex-col justify-between h-full">
+          <TopSellingItems items={topItems} />
         </div>
-        <DeliverySummary />
+
+        {/* Kitchen Stats (1 column) */}
+        <div className="flex flex-col gap-3 justify-between h-full">
+          <KitchenStats />
+        </div>
       </div>
+
+      {/* FULL WIDTH LIVE KITCHEN */}
+      <KitchenMonitor /> 
+      
     </div>
   );
 };
-
 
 export default Dashboard;

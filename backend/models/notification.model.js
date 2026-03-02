@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const NotificationSchema = new mongoose.Schema(
   {
+    restaurantId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Restaurant",
+  required: true,
+  index: true,
+},
     title: {
       type: String,
       trim: true,
@@ -50,7 +56,7 @@ const NotificationSchema = new mongoose.Schema(
     // For role-based notifications (kitchen/admin)
     targetRole: {
       type: String,
-      enum: ["admin", "superAdmin", "kitchen", "waiter", "cashier"],
+      enum: ["admin", "owner", "kitchen", "waiter", "cashier"],
       default: null,
       index: true,
     },

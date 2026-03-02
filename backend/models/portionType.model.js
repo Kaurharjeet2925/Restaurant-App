@@ -7,8 +7,13 @@ const unitSchema = new mongoose.Schema({
 });
 
 const portionTypeSchema = new mongoose.Schema(
-  {
-  
+   {
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
 
     type: {
       type: String,

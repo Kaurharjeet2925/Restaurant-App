@@ -8,7 +8,7 @@ export default function MobileLayout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-white">
 
       <Sidebar open={open} onClose={() => setOpen(false)} />
 

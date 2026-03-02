@@ -62,51 +62,72 @@ const MenuCard = ({
           {item.name}
         </h3>
 
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-sm font-bold text-[#ff4d4d]">
-            ₹{item.price}
-          </p>
+       <div className="flex items-center justify-between mt-2 gap-2">
+  {/* PRICE */}
+  <p className="text-sm font-bold text-[#ff4d4d] shrink-0">
+    ₹{item.price}
+  </p>
 
-          {/* ADD / QTY */}
-          {totalQty === 0 ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // 🛑 prevent card click
-                onPress();           // ✅ same logic
-              }}
-              className="
-                border border-[#ff4d4d] text-[#ff4d4d]
-                px-3 py-1 rounded-lg text-sm font-semibold
-                active:bg-[#ff4d4d]/10
-              "
-            >
-              ADD
-            </button>
-          ) : (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center border border-[#ff4d4d] rounded-lg"
-            >
-              <button
-                onClick={onDecrease}
-                className="px-2 text-lg text-[#ff4d4d]"
-              >
-                −
-              </button>
+  {/* ADD / QTY */}
+  {totalQty === 0 ? (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onPress();
+      }}
+      className="
+        h-8 min-w-[64px]
+        border border-[#ff4d4d]
+        text-[#ff4d4d]
+        rounded-lg
+        text-sm font-semibold
+        flex items-center justify-center
+        active:scale-95 transition
+      "
+    >
+      ADD
+    </button>
+  ) : (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="
+        h-8
+        flex items-center
+        border border-[#ff4d4d]
+        rounded-lg
+        overflow-hidden
+      "
+    >
+      <button
+        onClick={onDecrease}
+        className="
+          w-8 h-full
+          flex items-center justify-center
+          text-[#ff4d4d]
+          active:bg-red-50
+        "
+      >
+        −
+      </button>
 
-              <span className="px-3 text-sm font-semibold">
-                {totalQty}
-              </span>
+      <span className="w-8 text-center text-sm font-semibold">
+        {totalQty}
+      </span>
 
-              <button
-                onClick={onIncrease}
-                className="px-2 text-lg text-[#ff4d4d]"
-              >
-                +
-              </button>
-            </div>
-          )}
-        </div>
+      <button
+        onClick={onIncrease}
+        className="
+          w-8 h-full
+          flex items-center justify-center
+          text-[#ff4d4d]
+          active:bg-red-50
+        "
+      >
+        +
+      </button>
+    </div>
+  )}
+</div>
       </div>
     </div>
   );

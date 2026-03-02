@@ -87,7 +87,7 @@ export const NotificationProvider = ({ children }) => {
           position: "top-right",
           autoClose: 3500,
           pauseOnHover: true,
-          className: "!bg-[#22223b] !text-white !rounded-lg !shadow-lg !border-none",
+          className: "!bg-white !text-black !rounded-lg !shadow-lg !border-none",
           bodyClassName: "!text-base",
           icon: "🔔",
         });

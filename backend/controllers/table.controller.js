@@ -10,7 +10,7 @@ exports.createTable = async(req,res)=>{
         
         
       }
-      const exists = await Table.findOne({ tableNumber, area });
+      const exists = await Table.findOne({ tableNumber, area, restaurantId: req.user.restaurantId });
     if (exists) {
       return res
         .status(409)
@@ -22,6 +22,7 @@ exports.createTable = async(req,res)=>{
       capacity,
       area,
       status: "free",
+      restaurantId: req.user.restaurantId,
     });
 
     res.status(201).json(table);
@@ -32,7 +33,7 @@ exports.createTable = async(req,res)=>{
 
 exports.getTables = async (req, res) => {
   try {
-    const tables = await Table.find()
+    const tables = await Table.find({ restaurantId: req.user.restaurantId })
       .populate("area", "name") // ✅ IMPORTANT
       .sort({ "area.name": 1, tableNumber: 1 });
 
@@ -47,8 +48,8 @@ exports.updateTable = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updated = await Table.findByIdAndUpdate(
-      id,
+    const updated = await Table.findOneAndUpdate(
+      { _id: id, restaurantId: req.user.restaurantId },
       req.body,
       { new: true }
     );
@@ -72,8 +73,8 @@ exports.updateTableStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const table = await Table.findByIdAndUpdate(
-      id,
+    const table = await Table.findOneAndUpdate(
+      { _id: id, restaurantId: req.user.restaurantId },
       { status },
       { new: true }
     );
@@ -93,7 +94,10 @@ exports.deleteTable = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await Table.findByIdAndDelete(id);
+    const deleted = await Table.findOneAndDelete({ _id: id, restaurantId: req.user.restaurantId });
+    if (!deleted) {
+      return res.status(404).json({ message: "Table not found" });
+    }
     res.status(200).json({ message: "Table deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -114,7 +118,7 @@ exports.occupyTable = async (req, res) => {
       return res.status(400).json({ message: "Invalid table id" });
     }
 
-    const table = await Table.findById(id);
+    const table = await Table.findOne({ _id: id, restaurantId: req.user.restaurantId });
     if (!table) {
       console.warn(`[occupyTable] table not found for id: ${id}`);
       return res.status(404).json({ message: "Table not found" });
@@ -127,7 +131,8 @@ exports.occupyTable = async (req, res) => {
       items: [],
       subTotal: 0,
       totalAmount: 0,
-      status: "draft",
+      status: "pending",
+      restaurantId: req.user.restaurantId,
     });
 
     table.status = "occupied";
@@ -158,7 +163,7 @@ exports.getTableById = async (req, res) => {
       return res.status(400).json({ message: "Invalid table id" });
     }
 
-    const table = await Table.findById(id)
+    const table = await Table.findOne({ _id: id, restaurantId: req.user.restaurantId })
       .populate("customerId");
 
     if (!table) {

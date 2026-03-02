@@ -47,7 +47,7 @@ const NotificationBell = () => {
           {/* LIST */}
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 text-sm">
+              <div className="p-4 text-center text-black text-sm">
                 No notifications
               </div>
             ) : (
@@ -68,10 +68,10 @@ const NotificationBell = () => {
                   }}
                 >
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{n.message}</p>
+                    <p className="text-sm text-black font-medium">{n.message}</p>
 
                     {/* 🔹 META INFO */}
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-black mt-1">
                       {new Date(n.createdAt).toLocaleString()}
                       {n.activityType && ` • ${n.activityType}`}
                     </p>

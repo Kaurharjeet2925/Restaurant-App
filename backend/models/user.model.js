@@ -3,30 +3,61 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: function () {
+        return this.role !== "superAdmin";
+      },
+    },
+
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
     password: { type: String, required: true },
+
     role: {
       type: String,
-      enum: ["superAdmin", "admin", "waiter", "kitchen"],
+      enum: [
+        "superAdmin",
+        "owner",
+        "admin",
+        "waiter",
+        "kitchen",
+        "billing",
+      ],
       default: "waiter",
     },
-  phone: String,
-  uploadImage: String,
-  gender: String,
-  address: String,
-  dateofbirth: String,
+
+    phone: String,
+    uploadImage: String,
+    gender: String,
+    address: String,
+    dateofbirth: String,
   },
   { timestamps: true }
 );
 
-userSchema.pre("save", function () {
+/* ===============================
+   HASH PASSWORD
+================================ */
+userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
-  const salt = bcrypt.genSaltSync(10);
-  this.password = bcrypt.hashSync(this.password, salt);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
+/* ===============================
+   COMPARE PASSWORD
+================================ */
 userSchema.methods.comparePassword = function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };

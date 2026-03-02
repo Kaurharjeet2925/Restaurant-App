@@ -431,7 +431,7 @@ const updateVariantQty = (item, unit, diff) => {
 
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="native-swipe gap-2 px-3 py-2 whitespace-nowrap">
   <button
@@ -455,7 +455,7 @@ const updateVariantQty = (item, unit, diff) => {
 
       {/* Menu Grid */}
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-4 pb-40">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 py-2 sm:p-4 pb-40">
      {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);

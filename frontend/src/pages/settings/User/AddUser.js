@@ -90,7 +90,7 @@ const handleSubmit = async (e) => {
     if (isEditMode) {
       await apiClient.put(`/user/${id}`, fd);
     } else {
-      await apiClient.post("/superadmin/create-user", fd);
+      await apiClient.post("/staff", fd);
     }
 
     toast.success(isEditMode ? "User updated" : "User created");

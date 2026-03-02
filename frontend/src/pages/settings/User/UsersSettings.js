@@ -17,7 +17,7 @@ const UsersSettings = () => {
     try {
       setLoading(true);
       const res = await apiClient.get("/all");
-      setUsers(res.data.users || []);
+      setUsers(res.data || []);
     } catch (error) {
       toast.error("Failed to load users");
     } finally {

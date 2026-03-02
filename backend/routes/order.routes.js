@@ -18,7 +18,9 @@ const {
   collectCreditPayment,
   createCounterCreditOrder,
   markDineInAsCredit,
+  getDashboardStats,
   getOrders,
+  getKitchenMonitor,
 } = require("../controllers/order.controller");
 
 /* ================= ORDER (WAITER / POS) ================= */
@@ -26,12 +28,13 @@ router.post("/orders", auth, createOrder);
 router.post("/orders/counter", auth, createCounterOrderAndPay);
 router.get("/orders/:orderId", auth, getOrderById);
 router.get("/orders", auth, getOrders);
+router.get("/dashboard/kitchen-monitor", auth, getKitchenMonitor);
 router.put("/orders/:orderId", auth, updateOrder);
 
 router.patch("/orders/:orderId/send-to-kitchen", auth, sendToKitchen);
 
 router.get("/kitchen/kots", auth, getKitchenKots);
-
+router.get("/dashboard/stats", auth, getDashboardStats);
 router.put("/orders/:orderId/kot/:kotNo/item/:index/prepared", auth, markItemPrepared);
 router.put("/orders/:orderId/kot/:kotNo/ready", auth, markKotReady);
 router.patch("/orders/:orderId/kot/:kotNo/status", auth, updateKotStatus);

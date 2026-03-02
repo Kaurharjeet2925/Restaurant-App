@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const ActivityLogSchema = new mongoose.Schema(
   {
+    restaurantId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Restaurant",
+  required: true,
+  index: true,
+},
     module: {
       type: String,
       required: true,
