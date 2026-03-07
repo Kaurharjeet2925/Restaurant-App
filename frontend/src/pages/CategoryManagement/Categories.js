@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import apiClient from "../../apiclient/apiclient";
 import AddCategory from "./AddCategory";
 import { Plus } from "lucide-react";
+import PageHeader from "../../components/pageHeader";
+import { Utensils } from "lucide-react";
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -21,10 +23,12 @@ const Categories = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-12">
-        🍽️ Menu Categories
-      </h1>
+    <div className="p-0 sm:p-3">
+       <PageHeader 
+         title="Menu Categories"
+         backButton={true} 
+         onBack={() => window.history.back()} 
+       />
 
       {/* GRID */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-5">

@@ -50,6 +50,7 @@ exports.createNotification = async ({
         user: createdBy,
         referenceId: notification._id,
         meta: { targetUser, targetRole, activityType },
+        restaurantId,
       });
     }
 
@@ -73,17 +74,15 @@ exports.getNotifications = async (req, res) => {
       restaurantId: user.restaurantId, // 🔥 TENANT FILTER
     };
 
-    if (user.role === "admin" || user.role === "owner") {
-      filter.$or = [
-        { targetUser: user._id },
-        { targetRole: { $exists: true } },
-      ];
-    } else {
-      filter.$or = [
-        { targetUser: user._id },
-        { targetRole: user.role },
-      ];
-    }
+   filter.$or = [
+  { targetUser: user._id },
+  { targetRole: user.role },
+];
+
+// owner can also see admin notifications
+if (user.role === "owner") {
+  filter.$or.push({ targetRole: "admin" });
+}
 
     if (unread) {
       filter.read = false;
@@ -137,14 +136,14 @@ exports.markRead = async (req, res) => {
     notif.read = true;
     await notif.save();
 
-    await logActivity({
-      module: "notification",
-      action: "READ",
-      description: "Notification marked as read",
-      user,
-      referenceId: notif._id,
-    });
-
+   await logActivity({
+  module: "notification",
+  action: "READ",
+  description: "Notification marked as read",
+  user,
+  referenceId: notif._id,
+  restaurantId: user.restaurantId,
+});
     res.json({ message: "Marked as read" });
   } catch (err) {
     console.error("markRead error:", err);
@@ -178,6 +177,7 @@ exports.markAllRead = async (req, res) => {
         description: "All notifications marked as read",
         user,
         meta: { count: result.modifiedCount },
+        restaurantId: user.restaurantId,
       });
     }
 

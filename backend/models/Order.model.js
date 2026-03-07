@@ -74,6 +74,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["dine_in", "counter"],
       required: true,
     },
+    orderNumber: {
+  type: String,
+  unique: true,
+  index: true
+},
+ createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
 
     /* 🔹 TABLE (ONLY FOR DINE-IN) */
     tableId: {
@@ -93,7 +103,7 @@ const orderSchema = new mongoose.Schema(
       name: String,
       phone: String,
     },
-
+   
     items: [orderItemSchema],
     kots: [kotSchema],
 

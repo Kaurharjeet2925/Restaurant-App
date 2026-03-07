@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import NotificationBell from "./NotificationBell"; // 🔔 ADD THIS
+import ConfirmDialog from "./ConfirmDialog"; // Import the ConfirmDialog component
 
 export default function Navbar() {
   const [params, setParams] = useSearchParams();
@@ -44,8 +45,11 @@ export default function Navbar() {
     return () => clearTimeout(t);
   }, [q, params, setParams]);
 
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   return (
-    <div className="h-16 bg-white shadow-sm flex items-center justify-between px-6">
+    <div className="h-16 bg-white shadow-sm flex items-center justify-between px-2 py-2 border-b">
       {/* LEFT */}
       <div className="flex items-center gap-4">
         {showSearch && (
@@ -66,27 +70,56 @@ export default function Navbar() {
         {/* 🔔 NOTIFICATION BELL */}
         <NotificationBell />
 
-        {/* Avatar */}
-        {profileImage ? (
-          <img
-            src={profileImage}
-            alt={name}
-            className="w-10 h-10 rounded-full object-cover border"
-          />
-        ) : (
-          <div
-            className="w-10 h-10 rounded-full bg-[#ff4d4d]
-                       flex items-center justify-center
-                       text-white font-semibold text-sm"
+        {/* Profile Dropdown */}
+        <div className="relative ">
+          <button
+            className="flex items-center gap-2 focus:outline-none"
+            onClick={() => setShowDropdown((prev) => !prev)}
           >
-            {initials}
-          </div>
-        )}
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt={name}
+                className="w-10 h-10 rounded-full object-cover border"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-full bg-[#ff4d4d]
+                           flex items-center justify-center
+                           text-white font-semibold text-sm"
+              >
+                {initials}
+              </div>
+            )}
+            <span className="font-semibold text-gray-700 mr-8">
+              {name}
+            </span>
+          </button>
 
-        {/* Name */}
-        <span className="font-semibold text-gray-700">
-          {name}
-        </span>
+          {showDropdown && (
+            <div
+              className="absolute right-0 mt-2 w-16 bg-white border rounded-lg shadow-lg z-10"
+            >
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="block w-full text-left px-2 py-2 text-sm text-red-500 hover:bg-gray-100"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+
+        {showConfirm && (
+          <ConfirmDialog
+            message="Are you sure you want to logout?"
+            onConfirm={() => {
+              localStorage.removeItem("user");
+              window.location.href = "/";
+            }}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );

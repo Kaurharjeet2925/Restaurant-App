@@ -51,9 +51,10 @@ exports.createOrder = async (req, res) => {
       return { ...i, total };
     });
 
-   const order = await Order.create({
-    orderType: "dine_in",
-    restaurantId: req.user.restaurantId,
+  const order = await Order.create({
+  orderType: "dine_in",
+  restaurantId: req.user.restaurantId,
+  createdBy: req.user._id,
   tableId,
   items: formattedItems,
   subTotal,
@@ -83,38 +84,60 @@ exports.createOrder = async (req, res) => {
     const padded = hex.padStart(4, '0');
     const orderDisplayId = `#ORD${padded}`;
     // 🔔 Create notification for new order (kitchen, admin, superAdmin)
-    const orderMsg = `New order ${order.orderNumber} created for Table ${tableId}`;
-    await createNotification({
-      io: req.io,
-      message: orderMsg,
-      activityType: "order",
-      data: { orderId: order._id, orderNumber: order.orderNumber, tableId },
-      createdBy: req.user?._id,
-      targetRole: "kitchen",
-      restaurantId: req.user.restaurantId,
-    });
-    // Only send to admin if not superAdmin
-    if (req.user?.role !== "owner") {
-      await createNotification({
-        io: req.io,
-        message: orderMsg,
-        activityType: "order",
-        data: { orderId: order._id, orderNumber: order.orderNumber, tableId },
-        createdBy: req.user?._id,
-        targetRole: "admin",
-        restaurantId: req.user.restaurantId,
-      });
-    }
-    await createNotification({
-      io: req.io,
-      message: orderMsg,
-      activityType: "order",
-      data: { orderId: order._id, orderNumber: order.orderNumber, tableId },
-      createdBy: req.user?._id,
-      targetRole: "owner",
-      restaurantId: req.user.restaurantId,
-    });
+ const performerId = req.user._id;
+const performerRole = req.user.role;
 
+const message = `New order ${order.orderNumber} created for Table ${tableId}`;
+
+const data = {
+  orderId: order._id,
+  orderNumber: order.orderNumber,
+  tableId
+};
+
+/* ===== Kitchen always receives ===== */
+
+await createNotification({
+  io: req.io,
+  message,
+  activityType: "order",
+  data,
+  createdBy: performerId,
+  targetRole: "kitchen",
+  restaurantId: req.user.restaurantId
+});
+await createNotification({
+  io: req.io,
+  message: `You created Order ${order.orderNumber}`,
+  activityType: "order",
+  data,
+  createdBy: performerId,
+  targetUser: performerId,
+  restaurantId: req.user.restaurantId
+});
+if (performerRole !== "admin") {
+  await createNotification({
+    io: req.io,
+    message,
+    activityType: "order",
+    data,
+    createdBy: performerId,
+    targetRole: "admin",
+    restaurantId: req.user.restaurantId
+  });
+}
+
+/* ===== Owner ===== */
+
+await createNotification({
+  io: req.io,
+  message,
+  activityType: "order",
+  data,
+  createdBy: performerId,
+  targetRole: "owner",
+  restaurantId: req.user.restaurantId
+});
     // 📜 ACTIVITY LOG
     await require("../utils/logActivity")({
       module: "order",
@@ -239,7 +262,7 @@ await logActivity({
       data: { orderId, orderNumber: order.orderNumber, kotNo: nextKotNo },
       createdBy: req.user?._id,
       targetRole: "kitchen",
-      restaurantId: req.user.restaurantId
+      restaurantId: req.user.restaurantId,
     });
     await createNotification({
       io: req.io,
@@ -248,7 +271,7 @@ await logActivity({
       data: { orderId, orderNumber: order.orderNumber, kotNo: nextKotNo },
       createdBy: req.user?._id,
       targetRole: "admin",
-      restaurantId: req.user.restaurantId
+      restaurantId: req.user.restaurantId,
     });
     await createNotification({
       io: req.io,
@@ -257,7 +280,7 @@ await logActivity({
       data: { orderId, orderNumber: order.orderNumber, kotNo: nextKotNo },
       createdBy: req.user?._id,
       targetRole: "owner",
-      restaurantId: req.user.restaurantId
+      restaurantId: req.user.restaurantId,
     });
 
     // 📜 ACTIVITY LOG (only one entry)
@@ -328,7 +351,8 @@ if (!order.orderType) {
     const io = req.io;
     const userId = req.user?._id;
     const orderIdStr = order._id.toString();
-    const message = `KOT ${kotNo} for Order ${orderIdStr} is now preparing`;
+    const OrderNumber = order.orderNumber ? `(${order.orderNumber})` : "";
+    const message = `KOT ${kotNo} for Order  ${OrderNumber} is now preparing`;
     const activityType = "kitchen";
     const data = { orderId: orderIdStr, kotNo, status: "preparing" };
 
@@ -357,7 +381,7 @@ if (!order.orderType) {
     await require("../utils/logActivity")({
       module: "order",
       action: "SEND_TO_KITCHEN",
-      description: `KOT ${kotNo} for Order ${orderIdStr} moved to preparing`,
+      description: `KOT ${kotNo} for Order ${order.orderNumber} moved to preparing`,
       user: req.user,
       referenceId: order._id,
       restaurantId: req.user.restaurantId,
@@ -375,9 +399,9 @@ if (!order.orderType) {
 };
 
 
-/* ================= UPDATE KOT STATUS (KITCHEN) ================= */ 
 exports.updateKotStatus = async (req, res) => {
   const allowedRoles = ["owner", "admin", "kitchen"];
+
   if (!req.user || !allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ message: "Permission denied" });
   }
@@ -387,73 +411,141 @@ exports.updateKotStatus = async (req, res) => {
   status = status?.toLowerCase();
 
   const validStatus = ["pending", "preparing", "ready", "served"];
+
   if (!validStatus.includes(status)) {
     return res.status(400).json({ message: "Invalid KOT status" });
   }
 
-  const order = await Order.findOne({ _id: orderId, restaurantId: req.user.restaurantId });
-  if (!order) return res.status(404).json({ message: "Order not found" });
+  try {
 
-  const kot = order.kots.find(k => k.kotNo == kotNo);
-  if (!kot) return res.status(404).json({ message: "KOT not found" });
-
-  // 🚫 prevent duplicate updates
-  if (kot.status === status) {
-    return res.status(400).json({
-      message: `KOT ${kotNo} is already ${status}`,
-    });
-  }
-
-  kot.status = status;
-  order.status = deriveOrderStatus(order);
-  await order.save();
-
-  // 🔔 Send notification to admin and superAdmin when kitchen updates KOT status
-  const io = req.io;
-  const userId = req.user?._id;
-  const orderIdStr = order._id.toString();
-  const message = `KOT ${kotNo} for Order ${orderIdStr} marked as ${status}`;
-  const activityType = "kitchen";
-  const data = { orderId: orderIdStr, kotNo, status };
-
-  if (io) {
-    await require("./notification.controller").createNotification({
-      io,
-      message,
-      activityType,
-      data,
-      createdBy: userId,
-      targetRole: "admin",
+    const order = await Order.findOne({
+      _id: orderId,
       restaurantId: req.user.restaurantId
     });
-    await require("./notification.controller").createNotification({
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const kot = order.kots.find(k => k.kotNo == kotNo);
+
+    if (!kot) return res.status(404).json({ message: "KOT not found" });
+
+    if (kot.status === status) {
+      return res.status(400).json({
+        message: `KOT ${kotNo} is already ${status}`
+      });
+    }
+
+    /* ---------- UPDATE STATUS ---------- */
+
+    kot.status = status;
+    order.status = deriveOrderStatus(order);
+
+    await order.save();
+
+    /* ---------- VARIABLES ---------- */
+
+    const io = req.io;
+    const performerId = req.user._id;
+    const performerRole = req.user.role;
+    const creatorId = order.createdBy; // waiter who created order
+
+    const message = `KOT ${kotNo} for Order ${order.orderNumber} is ${status}`;
+
+    const data = {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      kotNo,
+      status
+    };
+
+    /* ---------- PERFORMER CONFIRMATION ---------- */
+
+    await createNotification({
       io,
-      message,
-      activityType,
+      message: `You updated KOT ${kotNo} to ${status}`,
+      activityType: "kitchen",
       data,
-      createdBy: userId,
-      targetRole: "owner",
+      createdBy: performerId,
+      targetUser: performerId,
       restaurantId: req.user.restaurantId
     });
+
+    /* ---------- ORDER CREATOR (WAITER) ---------- */
+
+    if (
+      creatorId &&
+      creatorId.toString() !== performerId.toString()
+    ) {
+      await createNotification({
+        io,
+        message,
+        activityType: "kitchen",
+        data,
+        createdBy: performerId,
+        targetUser: creatorId,
+        restaurantId: req.user.restaurantId
+      });
+    }
+
+    /* ---------- ADMIN ---------- */
+
+    if (performerRole !== "admin") {
+      await createNotification({
+        io,
+        message,
+        activityType: "kitchen",
+        data,
+        createdBy: performerId,
+        targetRole: "admin",
+        restaurantId: req.user.restaurantId
+      });
+    }
+
+    /* ---------- OWNER ---------- */
+
+   await createNotification({
+  io: req.io,
+  title: "Restaurant Update",
+  message,
+  activityType: "order",
+  data,
+  createdBy: performerId,
+  targetRole: "owner",
+  restaurantId: req.user.restaurantId
+});
+
+    /* ---------- ACTIVITY LOG ---------- */
+
+    await logActivity({
+      module: "order",
+      action: "UPDATE_KOT_STATUS",
+      description: `KOT ${kotNo} for Order ${order.orderNumber} marked ${status}`,
+      user: req.user,
+      referenceId: order._id,
+      restaurantId: req.user.restaurantId,
+      meta: { kotNo, status }
+    });
+
+    /* ---------- REALTIME TOAST ---------- */
+
+    if (io) {
+      io.to(`restaurant:${req.user.restaurantId}:user:${performerId}`)
+        .emit("toast", {
+          type: "success",
+          message: `KOT ${kotNo} updated to ${status}`
+        });
+    }
+
+    res.json({
+      message: `KOT ${kotNo} marked ${status}`,
+      orderStatus: order.status
+    });
+
+  } catch (err) {
+    console.error("Update KOT status error:", err);
+    res.status(500).json({ message: "Server error" });
   }
-
-  // 📜 ACTIVITY LOG
-  await require("../utils/logActivity")({
-    module: "order",
-    action: "UPDATE_KOT_STATUS",
-    description: `KOT ${kotNo} for Order ${orderIdStr} marked as ${status}`,
-    user: req.user,
-    referenceId: order._id,
-    restaurantId: req.user.restaurantId,
-    meta: { kotNo, status }
-  });
-
-  return res.json({
-    message: `KOT ${kotNo} marked ${status}`,
-    orderStatus: order.status,
-  });
 };
-
 
 
 /* ================= GET ORDER ================= */
@@ -483,7 +575,9 @@ exports.getOrderById = async (req, res) => {
 
 exports.getKitchenKots = async (req, res) => {
   try {
-    const orders = await Order.find({restaurantId: req.user.restaurantId, "kots.status": { $ne: "pending" }, orderType: "dine_in" })
+    const orders = await Order.find({restaurantId: req.user.restaurantId,
+       "kots.status": { $in: ["pending", "preparing", "ready"] },
+       orderType: "dine_in" })
       .populate({
         path: "tableId",
         select: "tableNumber status area customerId",
@@ -505,7 +599,8 @@ exports.getKitchenKots = async (req, res) => {
         kitchenKots.push({
           _id: kot._id,
           orderId: order._id,
-
+         orderNumber: order.orderNumber,
+         
           kotNo: kot.kotNo,
           status: kot.status,
           items: kot.items,
@@ -530,18 +625,27 @@ exports.getKitchenKots = async (req, res) => {
 
 
 exports.markItemPrepared = async (req, res) => {
+
   const { orderId, kotNo, index } = req.params;
 
-  const order = await Order.findOne({ _id: orderId, restaurantId: req.user.restaurantId });
+  const order = await Order.findOne({
+    _id: orderId,
+    restaurantId: req.user.restaurantId
+  });
+
   if (!order) return res.status(404).json({ message: "Order not found" });
 
   const kot = order.kots.find(k => k.kotNo == kotNo);
   if (!kot) return res.status(404).json({ message: "KOT not found" });
 
-  // Update item to prepared
+  if (!kot.items[index]) {
+    return res.status(404).json({ message: "Item not found" });
+  }
+
+  /* UPDATE ITEM STATUS */
+
   kot.items[index].status = "prepared";
 
-  // If at least one item prepared → KOT is preparing
   if (kot.items.some(i => i.status === "prepared")) {
     kot.status = "preparing";
   }
@@ -550,22 +654,80 @@ exports.markItemPrepared = async (req, res) => {
 
   await order.save();
 
+  const performerId = req.user._id;
+  const performerRole = req.user.role;
+  const creatorId = order.createdBy;
+
+  const message = `Item ${kot.items[index].name} prepared in KOT ${kotNo} for Order ${order.orderNumber}`;
+
+  const data = {
+    orderId: order._id,
+    orderNumber: order.orderNumber,
+    kotNo,
+    status: "prepared"
+  };
+
+await createNotification({
+  io: req.io,
+  title: "Item Prepared",
+  message: `You marked item prepared in KOT ${kotNo}`,
+  activityType: "kitchen",
+  data,
+  createdBy: performerId,
+  targetUser: performerId,
+  restaurantId: req.user.restaurantId
+});
+
+  // Ensure performerId and creatorId are not the same before sending notifications
+  if (creatorId && creatorId.toString() !== performerId.toString()) {
+    await createNotification({
+      io: req.io,
+      title: "Item Prepared",
+      message,
+      activityType: "kitchen",
+      data,
+      createdBy: performerId,
+      targetUser: creatorId,
+      restaurantId: req.user.restaurantId
+    });
+  }
+
+  // Consolidate admin and owner notifications to avoid redundancy
+  const rolesToNotify = ["admin", "owner"];
+  for (const role of rolesToNotify) {
+    await createNotification({
+      io: req.io,
+      title: "Item Prepared",
+      message,
+      activityType: "kitchen",
+      data,
+      createdBy: performerId,
+      targetRole: role,
+      restaurantId: req.user.restaurantId
+    });
+  }
+
   res.json({
     message: "Item marked prepared",
-    kot,
+    kot
   });
+
 };
 
 exports.markKotReady = async (req, res) => {
+
   const { orderId, kotNo } = req.params;
 
-  const order = await Order.findOne({ _id: orderId, restaurantId: req.user.restaurantId });
+  const order = await Order.findOne({
+    _id: orderId,
+    restaurantId: req.user.restaurantId
+  });
+
   if (!order) return res.status(404).json({ message: "Order not found" });
 
   const kot = order.kots.find(k => k.kotNo == kotNo);
   if (!kot) return res.status(404).json({ message: "KOT not found" });
 
-  // ✅ All items must be prepared
   const allPrepared = kot.items.every(i => i.status === "prepared");
 
   if (!allPrepared) {
@@ -574,16 +736,87 @@ exports.markKotReady = async (req, res) => {
     });
   }
 
-  kot.status = "ready";
+  /* UPDATE STATUS */
 
+  kot.status = "ready";
   order.status = deriveOrderStatus(order);
 
   await order.save();
 
-  res.json({
-    message: "KOT marked ready",
-    kot,
+  const performerId = req.user._id;
+  const performerRole = req.user.role;
+  const creatorId = order.createdBy;
+
+  const message = `KOT ${kotNo} for Order ${order.orderNumber} is ready`;
+
+  const data = {
+    orderId: order._id,
+    orderNumber: order.orderNumber,
+    kotNo,
+    status: "ready"
+  };
+
+  /* PERFORMER CONFIRMATION */
+
+  await createNotification({
+    io: req.io,
+    title: "KOT Ready",
+    message: `You marked KOT ${kotNo} ready`,
+    activityType: "kitchen",
+    data,
+    createdBy: performerId,
+    targetUser: performerId,
+    restaurantId: req.user.restaurantId
   });
+
+  /* WAITER (ORDER CREATOR) */
+
+  if (creatorId && creatorId.toString() !== performerId.toString()) {
+    await createNotification({
+      io: req.io,
+      title: "KOT Ready",
+      message,
+      activityType: "kitchen",
+      data,
+      createdBy: performerId,
+      targetUser: creatorId,
+      restaurantId: req.user.restaurantId
+    });
+  }
+
+  /* ADMIN */
+
+  if (performerRole !== "admin") {
+    await createNotification({
+      io: req.io,
+      title: "KOT Ready",
+      message,
+      activityType: "kitchen",
+      data,
+      createdBy: performerId,
+      targetRole: "admin",
+      restaurantId: req.user.restaurantId
+    });
+  }
+
+  /* OWNER (ALWAYS) */
+
+  await createNotification({
+    io: req.io,
+    title: "KOT Ready",
+    message,
+    activityType: "kitchen",
+    data,
+    createdBy: performerId,
+    targetRole: "owner",
+    restaurantId: req.user.restaurantId
+  });
+
+  res.json({
+    message: "KOT marked as ready",
+    data
+  });
+
 };
 
 exports.generateBillAndPay = async (req, res) => {
@@ -851,7 +1084,7 @@ exports.editKot = async (req, res) => {
 /* ================= COUNTER ORDER + PAY ================= */
 exports.createCounterOrderAndPay = async (req, res) => {
     // Only allow owner and admin roles to perform counter payment
-    const allowedRoles = ["owner", "admin"];
+    const allowedRoles = ["owner", "admin", "waiter"];
     if (!req.user || !allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ message: "You do not have permission to perform payment." });
     }
@@ -875,7 +1108,8 @@ exports.createCounterOrderAndPay = async (req, res) => {
     });
 
     const order = await Order.create({
-      orderType: "counter",     // ✅ FIX 1
+      orderType: "counter",     
+      createdBy: req.user._id,
       tableId: null,            // ✅ FIX 2
 
       items: formattedItems,
@@ -1107,6 +1341,7 @@ exports.createCounterCreditOrder = async (req, res) => {
     /* ================= CREATE ORDER ================= */
     const order = await Order.create({
       orderType: "counter",
+      createdBy: req.user._id,
       customer: {
         customerId: customer._id,
         name: customer.name,
@@ -1376,59 +1611,90 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getKitchenMonitor = async (req, res) => {
   try {
-    const activeOrders = await Order.find({
+
+    const orders = await Order.find({
       restaurantId: req.user.restaurantId,
-      status: { $nin: ["completed", "cancelled"] },
-      orderType: "dine_in"
-    }).populate({
+      orderType: "dine_in",
+      status: { $nin: ["completed", "cancelled"] }
+    })
+    .populate({
       path: "tableId",
       select: "tableNumber area",
       populate: { path: "area", select: "name" }
-    });
+    })
+    .lean();
 
     const now = new Date();
 
-    let readyCount = 0;
-    let totalPrepMinutes = 0;
-    let delayedCount = 0;
+    const formattedOrders = [];
 
-    const formatted = activeOrders.map(order => {
+    for (const order of orders) {
 
-      const firstKotTime = order.kots?.[0]?.createdAt;
+      // 🔹 Only running KOTs
+      const runningKots = order.kots.filter(k =>
+        ["pending", "preparing", "ready"].includes(k.status)
+      );
+
+      // ❌ Skip order if no active KOT
+      if (!runningKots.length) continue;
+
+      const firstKotTime = runningKots?.[0]?.createdAt;
+
       const minutes = firstKotTime
         ? Math.floor((now - new Date(firstKotTime)) / 60000)
         : 0;
 
-      if (minutes > 15) delayedCount++;
-
-      if (order.kots.every(k => k.status === "ready")) {
-        readyCount++;
-      }
-
-      totalPrepMinutes += minutes;
-
-      return {
+      formattedOrders.push({
+        orderId: order._id,
         orderNumber: order.orderNumber,
-        table: order.tableId?.tableNumber,
-        items: order.items,
+        tableId: order.tableId?._id,
+        table: order.tableId?.tableNumber || "-",
+        area: order.tableId?.area?.name || "",
+
         minutes,
-        status: order.status
-      };
-    });
+
+        runningKots: runningKots.map(k => ({
+          kotNo: k.kotNo,
+          status: k.status,
+          createdAt: k.createdAt,
+
+          items: k.items.map(i => ({
+            name: i.name,
+            qty: i.qty
+          }))
+        }))
+      });
+
+    }
+
+    /* ================= SUMMARY ================= */
+
+    const delayedCount = formattedOrders.filter(o => o.minutes > 15).length;
+
+    const readyCount = formattedOrders.filter(o =>
+      o.runningKots.every(k => k.status === "ready")
+    ).length;
+
+    const totalPrepMinutes = formattedOrders.reduce(
+      (sum, o) => sum + o.minutes,
+      0
+    );
 
     res.json({
       summary: {
-        kitchenCount: activeOrders.length,
+        kitchenCount: formattedOrders.length,
         readyCount,
-        avgPrep: activeOrders.length
-          ? Math.round(totalPrepMinutes / activeOrders.length)
+        avgPrep: formattedOrders.length
+          ? Math.round(totalPrepMinutes / formattedOrders.length)
           : 0,
         delayedCount
       },
-      orders: formatted
+
+      orders: formattedOrders
     });
 
   } catch (err) {
+    console.error("Kitchen monitor error:", err);
     res.status(500).json({ message: "Kitchen monitor error" });
   }
 };

@@ -4,7 +4,7 @@ import apiClient from "../../../apiclient/apiclient";
 const SmallKitchenCard = ({ title, value, green, red }) => {
   return (
     <div
-      className={`rounded-xl p-6 shadow-sm border
+      className={`rounded-xl p-3 shadow-sm border flex gap-4 item-center justify-between
         ${green ? "bg-green-50 border-green-200" : ""}
         ${red ? "bg-red-50 border-red-200" : ""}
         ${!green && !red ? "bg-white border-slate-200" : ""}
@@ -38,7 +38,7 @@ const KitchenStats = () => {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <SmallKitchenCard
         title="Orders in Kitchen"
         value={summary.kitchenCount || 0}

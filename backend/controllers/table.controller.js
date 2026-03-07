@@ -33,6 +33,10 @@ exports.createTable = async(req,res)=>{
 
 exports.getTables = async (req, res) => {
   try {
+    if (!req.user || !req.user.restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID is required" });
+    }
+
     const tables = await Table.find({ restaurantId: req.user.restaurantId })
       .populate("area", "name") // ✅ IMPORTANT
       .sort({ "area.name": 1, tableNumber: 1 });
@@ -133,6 +137,7 @@ exports.occupyTable = async (req, res) => {
       totalAmount: 0,
       status: "pending",
       restaurantId: req.user.restaurantId,
+      createdBy: req.user._id, 
     });
 
     table.status = "occupied";

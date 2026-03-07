@@ -19,26 +19,29 @@ const NotificationSchema = new mongoose.Schema(
       trim: true,
     },
 
-   activityType: {
+    activityType: {
       type: String,
       enum: [
-  "order",          
-  "payment",        
-  "ledger",        
-  "customer",      
-  "menu",          
-  "category",      
-  "portion",      
-  "area",          
-  "user",           
-  "kitchen",       
-  "report",        
-  "system",        
-  "credit_order",  // Added for credit order notifications
-],
+        "order",          
+        "payment",        
+        "ledger",        
+        "customer",      
+        "menu",          
+        "category",      
+        "portion",      
+        "area",          
+        "user",           
+        "kitchen",       
+        "report",        
+        "system",        
+        "credit_order",  // Added for credit order notifications
+        "kotReady",
+        "itemPrepared",  // Corrected from markItemPrepared to itemPrepared
+      ],
       required: true,
       index: true,
     },
+
     // Store reference info (orderId, tableNo, amount, etc.)
     data: {
       type: mongoose.Schema.Types.Mixed,

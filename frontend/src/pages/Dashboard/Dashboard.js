@@ -6,6 +6,7 @@ import PaymentStatusChart from "./components/paymentStatusChart";
 import apiClient from "../../apiclient/apiclient";
 import KitchenMonitor from "./components/KitchenMonitor";
 import KitchenStats from "./components/KitchenStats";
+
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -45,46 +46,64 @@ const Dashboard = () => {
       : 0;
 
   return (
-    <div className="p-6 bg-white min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-slate-800">
-        Restaurant Dashboard
-      </h1>
+   <div className="p-6  min-h-screen">
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Today's Revenue" value={`₹${stats.totalSales}`} highlight />
-        <StatCard title="Orders Today" value={stats.totalOrders} />
-        <StatCard title="Avg Order Value" value={`₹${avgOrderValue}`} />
-        <StatCard title="Items Sold" value={stats.itemsSold} />
-      </div>
+<h1 className="text-2xl font-bold mb-6 text-slate-800">
+Restaurant Dashboard
+</h1>
 
-      {/* SALES TREND + PAYMENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        <div className="lg:col-span-2">
-          <SalesLineChart data={salesTrend} />
-        </div>
+{/* TOP KPI CARDS */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 
-        <PaymentStatusChart paymentData={paymentStats} />
-      </div>
+<StatCard title="Today's Revenue" value={`₹${stats.totalSales}`} highlight />
+<StatCard title="Orders Today" value={stats.totalOrders} />
+<StatCard title="Avg Order Value" value={`₹${avgOrderValue}`} />
+<StatCard title="Items Sold" value={stats.itemsSold} />
 
-      {/* TOP PRODUCTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+</div>
 
-        {/* Top Items (2 columns) */}
-        <div className="lg:col-span-2 flex flex-col justify-between h-full">
-          <TopSellingItems items={topItems} />
-        </div>
 
-        {/* Kitchen Stats (1 column) */}
-        <div className="flex flex-col gap-3 justify-between h-full">
-          <KitchenStats />
-        </div>
-      </div>
+{/* KITCHEN MONITOR + SUMMARY */}
+<div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mt-6">
 
-      {/* FULL WIDTH LIVE KITCHEN */}
-      <KitchenMonitor /> 
-      
-    </div>
+  {/* Kitchen Monitor */}
+  <div className="lg:col-span-3 h-[330px]">
+    <KitchenMonitor />
+  </div>
+
+  {/* Kitchen Summary */}
+  <div className="h-[330px] bg-teal-50 rounded-xl border border-green-200 p-4 flex flex-col justify-between">
+
+    <h2 className="text-sm font-semibold text-green-700">
+      Kitchen Summary
+    </h2>
+
+    <KitchenStats />
+
+  </div>
+
+</div>
+
+{/* SALES TREND + PAYMENT */}
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+
+<div className="lg:col-span-2 bg-white rounded-xl border p-4">
+<SalesLineChart data={salesTrend} />
+</div>
+
+<div className="bg-white rounded-xl border p-4">
+<PaymentStatusChart paymentData={paymentStats} />
+</div>
+
+</div>
+
+
+{/* TOP SELLING */}
+<div className="mt-6 bg-white rounded-xl border p-4">
+<TopSellingItems items={topItems} />
+</div>
+
+</div>
   );
 };
 

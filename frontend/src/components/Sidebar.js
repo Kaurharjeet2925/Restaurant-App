@@ -12,22 +12,50 @@ import {
   Coffee,
 } from "lucide-react";
 
-const menu = [
-  { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
-  { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
-  { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
-  { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
-  { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
-  { icon: <List size={20} />, label: "Categories", path: "/categories" },
-  { icon: <List size={20} />, label: "Orders", path: "/view-orders" },
-  { icon: <Users size={20} />, label: "Customers", path: "/customers" },
-  { icon: <BarChart3 size={20} />, label: "Reports", path: "/reports" },
-  { icon: <Settings size={20} />, label: "Settings", path: "/settings" },
-];
+const menus = {
+  owner: [
+    { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
+    { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+    { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
+    { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
+    { icon: <List size={20} />, label: "Categories", path: "/categories" },
+    { icon: <List size={20} />, label: "Orders", path: "/view-orders" },
+    { icon: <Users size={20} />, label: "Customers", path: "/customers" },
+    { icon: <BarChart3 size={20} />, label: "Reports", path: "/reports" },
+    { icon: <Settings size={20} />, label: "Settings", path: "/settings" }
+  ],
 
+  admin: [
+    { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
+    { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+    { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
+    { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
+    { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
+    { icon: <List size={20} />, label: "Categories", path: "/categories" },
+    { icon: <List size={20} />, label: "Orders", path: "/view-orders" },
+    { icon: <Users size={20} />, label: "Customers", path: "/customers" },
+    { icon: <BarChart3 size={20} />, label: "Reports", path: "/reports" },
+    { icon: <Settings size={20} />, label: "Settings", path: "/settings" }
+  ],
+
+  waiter: [
+    { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
+    { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+    { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
+  ],
+
+  kitchen: [
+    { icon: <Coffee size={20} />, label: "Kitchen Dashboard", path: "/kitchen" },
+  ]
+};
 export default function Sidebar({ open, setOpen }) {
   const location = useLocation();
   const { isMobile } = useResponsive();
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const role = user?.role || "waiter";
+
+  const menu = menus[role] || [];
 
   return (
     <>
@@ -36,7 +64,6 @@ export default function Sidebar({ open, setOpen }) {
           w-64 bg-white shadow-xl px-4 py-6
           h-screen overflow-y-auto
           transition-transform duration-300
-
           ${isMobile ? "fixed top-0 left-0 z-40" : "relative"}
           ${open || !isMobile ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -71,7 +98,6 @@ export default function Sidebar({ open, setOpen }) {
         </ul>
       </aside>
 
-      {/* Mobile overlay */}
       {isMobile && open && (
         <div
           className="fixed inset-0 bg-black/30 z-30"

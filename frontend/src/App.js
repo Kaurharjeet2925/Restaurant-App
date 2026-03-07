@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import RegisterRestaurant from "./pages/Platform/RegisterRestaurant";
 import PlatformLayout from "./components/PlatformLayout";
 import Login from "./pages/Login";
+import KitchenLayout from "./components/KitchenLayout";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Tables from "./pages/Tables/Tables";
 import OrderPage from "./pages/Order/OrderPage";
@@ -20,7 +21,7 @@ import Categories from "./pages/CategoryManagement/Categories";
 import MenuItems from "./pages/MenuItemManaement/MenuItems";
 import Customers from "./pages/CategoryManagement/Customers/Customers";
 import CustomerLedger from "./pages/CategoryManagement/Customers/CustomerLedger";
-import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
+//import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 import Settings from "./pages/settings/Settings";
 import AddUser from "./pages/settings/User/AddUser";
 import  SalesReport from "./pages/Reports/DailyOrderWiseReport";
@@ -40,9 +41,13 @@ const ProtectedRoute = ({ children }) => {
 
   if (!token) return <Navigate to="/" replace />;
 
-  // Block superAdmin from restaurant system
   if (user?.role === "superAdmin") {
     return <Navigate to="/platform/register" replace />;
+  }
+
+  // 🚀 Redirect kitchen users to kitchen screen only
+  if (user?.role === "kitchen" && window.location.pathname !== "/kitchen") {
+    return <Navigate to="/kitchen" replace />;
   }
 
   return children;
@@ -299,24 +304,13 @@ function App() {
             />
 
             <Route
-              path="/kitchen"
-              element={
-                <ProtectedRoute>
-                  <ResponsiveLayout
-                    mobile={
-                      <MobilePageWrapper>
-                        <KitchenDashboard />
-                      </MobilePageWrapper>
-                    }
-                    desktop={
-                      <AdminLayout>
-                        <KitchenDashboard />
-                      </AdminLayout>
-                    }
-                  />
-                </ProtectedRoute>
-              }
-            />
+  path="/kitchen"
+  element={
+    <ProtectedRoute>
+      <KitchenLayout />
+    </ProtectedRoute>
+  }
+/>
 
             <Route
               path="/settings"
