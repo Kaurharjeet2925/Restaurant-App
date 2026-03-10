@@ -26,6 +26,7 @@ const SalesReport = () => {
   const [table, setTable] = useState([]);
 
   /* ================= FETCH REPORT ================= */
+
   const fetchReport = async () => {
     if (!from || !to) return alert("Please select date range");
 
@@ -46,47 +47,52 @@ const SalesReport = () => {
       alert("Failed to load report");
     }
   };
-const downloadExcel = async () => {
-  if (!from || !to) {
-    alert("Please select date range");
-    return;
-  }
 
-  try {
-    const start = format(from, "yyyy-MM-dd");
-    const end = format(to, "yyyy-MM-dd");
+  /* ================= DOWNLOAD EXCEL ================= */
 
-    const response = await apiClient.get(
-      `/reports/sales-report?start=${start}&end=${end}&download=true`,
-      { responseType: "blob" }
-    );
+  const downloadExcel = async () => {
+    if (!from || !to) return alert("Please select date range");
 
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `sales-report-${start}-to-${end}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    try {
+      const start = format(from, "yyyy-MM-dd");
+      const end = format(to, "yyyy-MM-dd");
 
-  } catch (err) {
-    console.error(err);
-    alert("Download failed");
-  }
-};
+      const response = await apiClient.get(
+        `/reports/sales-report?start=${start}&end=${end}&download=true`,
+        { responseType: "blob" }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `sales-report-${start}-to-${end}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error(err);
+      alert("Download failed");
+    }
+  };
+
   /* ================= FILTER TABLE ================= */
+
   const filteredTable = useMemo(() => {
     const q = search.toLowerCase();
 
-    return table.filter((order) =>
-      order.orderNumber?.toLowerCase().includes(q) ||
-      order.customerName?.toLowerCase().includes(q) ||
-      order.tableName?.toLowerCase().includes(q) ||
-      order.areaName?.toLowerCase().includes(q)
+    return table.filter(
+      (order) =>
+        order.orderNumber?.toLowerCase().includes(q) ||
+        order.customerName?.toLowerCase().includes(q) ||
+        order.tableName?.toLowerCase().includes(q) ||
+        order.areaName?.toLowerCase().includes(q)
     );
   }, [table, search]);
 
-  /* ================= DEFAULT LOAD ================= */
+  /* ================= DEFAULT DATE ================= */
+
   useEffect(() => {
     const today = new Date();
     const last7 = new Date();
@@ -101,9 +107,10 @@ const downloadExcel = async () => {
   }, [from, to]);
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-6 min-h-screen bg-background">
 
       {/* HEADER */}
+
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">
           Sales Report
@@ -114,14 +121,16 @@ const downloadExcel = async () => {
       </div>
 
       {/* FILTER BAR */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 bg-white p-4 rounded-xl shadow">
+
+      <div className="flex flex-wrap items-center gap-4 mb-6 bg-card border border-borderLight p-4 rounded-xl shadow-card">
+
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">From</label>
           <DatePicker
             selected={from}
             onChange={setFrom}
             dateFormat="dd-MM-yyyy"
-            className="border rounded px-3 py-2 w-40"
+            className="border border-borderLight rounded px-3 py-2 w-40"
           />
         </div>
 
@@ -131,7 +140,7 @@ const downloadExcel = async () => {
             selected={to}
             onChange={setTo}
             dateFormat="dd-MM-yyyy"
-            className="border rounded px-3 py-2 w-40"
+            className="border border-borderLight rounded px-3 py-2 w-40"
           />
         </div>
 
@@ -140,79 +149,110 @@ const downloadExcel = async () => {
           placeholder="Search order / customer / table..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border rounded px-4 py-2 flex-1 min-w-[250px]"
+          className="border border-borderLight rounded px-4 py-2 flex-1 min-w-[250px]"
         />
-<button
-  onClick={fetchReport}
-  className="bg-blue-900 hover:bg-blue-800 text-white px-5 py-2 rounded-lg"
->
-  View
-</button>
 
-<button
-  onClick={downloadExcel}
-  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg"
->
-  Download Excel
-</button>
+        <button
+          onClick={fetchReport}
+          className="bg-primaryGradient text-white px-5 py-2 rounded-lg shadow-card"
+        >
+          View
+        </button>
+
+        <button
+          onClick={downloadExcel}
+          className="border border-borderLight text-primary px-5 py-2 rounded-lg hover:bg-primaryLight"
+        >
+          Download Excel
+        </button>
+
       </div>
 
       {/* SUMMARY CARDS */}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
         <Card title="Today Sales" value={cards.todaySales} />
         <Card title="Last 7 Days" value={cards.weekSales} />
         <Card title="This Month" value={cards.monthSales} />
         <Card title="Top Product" value={cards.topProduct} />
+
       </div>
 
       {/* CHARTS */}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
         <ChartCard title="Sales Trend">
+
           <ResponsiveContainer width="100%" height={300}>
+
             <LineChart data={chart}>
-              <CartesianGrid strokeDasharray="3 3" />
+
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+
               <XAxis dataKey="date" />
               <YAxis />
+
               <Tooltip formatter={(v) => [`₹ ${v}`, "Sales"]} />
+
               <Line
                 type="monotone"
                 dataKey="amount"
-                stroke="#2563eb"
+                stroke="#9D0942"
                 strokeWidth={3}
               />
+
             </LineChart>
+
           </ResponsiveContainer>
+
         </ChartCard>
 
         <ChartCard title="Top Selling Products">
+
           <ResponsiveContainer width="100%" height={300}>
+
             <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" />
+
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+
               <XAxis
                 dataKey="name"
                 tick={{ angle: -35, textAnchor: "end", fontSize: 12 }}
                 interval={0}
               />
+
               <YAxis />
               <Tooltip />
-              <Bar dataKey="quantity" fill="#38bdf8" />
+
+              <Bar dataKey="quantity" fill="#9D0942" />
+
             </BarChart>
+
           </ResponsiveContainer>
+
         </ChartCard>
+
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-2xl shadow border">
-        <div className="px-6 py-4 border-b flex justify-between">
+
+      <div className="bg-card rounded-2xl shadow-card border border-borderLight">
+
+        <div className="px-6 py-4 border-b border-borderLight flex justify-between">
           <h3 className="text-lg font-semibold">Sales Details</h3>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-gray-500">
             {filteredTable.length} records
           </span>
         </div>
 
         <div className="overflow-x-auto">
+
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+
+            <thead className="bg-primaryLight text-xs uppercase text-gray-600">
+
               <tr>
                 <th className="px-4 py-3 text-left">Order No</th>
                 <th className="px-4 py-3 text-left">Customer</th>
@@ -222,65 +262,94 @@ const downloadExcel = async () => {
                 <th className="px-4 py-3 text-center">Payment</th>
                 <th className="px-4 py-3 text-center">Status</th>
               </tr>
+
             </thead>
 
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-borderLight">
+
               {filteredTable.map((order, index) => (
-                <tr key={index} className="hover:bg-slate-50">
+
+                <tr key={index} className="hover:bg-primaryLight transition">
+
                   <td className="px-4 py-3 font-medium">
                     {order.orderNumber}
                   </td>
+
                   <td className="px-4 py-3">
                     {order.customerName}
                   </td>
+
                   <td className="px-4 py-3">
                     {order.tableName}
                   </td>
+
                   <td className="px-4 py-3">
                     {order.areaName}
                   </td>
+
                   <td className="px-4 py-3 text-right font-semibold">
                     ₹ {order.totalAmount}
                   </td>
+
                   <td className="px-4 py-3 text-center capitalize">
                     {order.paymentStatus}
                   </td>
+
                   <td className="px-4 py-3 text-center capitalize">
                     {order.status}
                   </td>
+
                 </tr>
+
               ))}
 
               {filteredTable.length === 0 && (
+
                 <tr>
-                  <td colSpan={7} className="text-center py-6 text-slate-500">
+                  <td colSpan={7} className="text-center py-6 text-gray-500">
                     No sales found
                   </td>
                 </tr>
+
               )}
+
             </tbody>
+
           </table>
+
         </div>
+
       </div>
+
     </div>
   );
 };
 
-/* Reusable Components */
+/* ================= COMPONENTS ================= */
 
 const Card = ({ title, value }) => (
-  <div className="bg-white rounded-xl shadow border p-5">
-    <p className="text-sm text-slate-500">{title}</p>
-    <p className="text-xl font-semibold text-slate-800">
+  <div className="bg-card border border-borderLight rounded-xl shadow-card p-5">
+
+    <p className="text-sm text-gray-500">
+      {title}
+    </p>
+
+    <p className="text-xl font-semibold text-gray-800">
       {typeof value === "number" ? `₹ ${value}` : value || "N/A"}
     </p>
+
   </div>
 );
 
 const ChartCard = ({ title, children }) => (
-  <div className="bg-white rounded-xl shadow border p-6">
-    <h3 className="text-lg font-semibold mb-4">{title}</h3>
+  <div className="bg-card border border-borderLight rounded-xl shadow-card p-6">
+
+    <h3 className="text-lg font-semibold mb-4">
+      {title}
+    </h3>
+
     {children}
+
   </div>
 );
 

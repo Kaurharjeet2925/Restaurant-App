@@ -57,8 +57,8 @@ const KotPrint = ({ kot, order }) => {
       </p>
 
       <p>
-        Order: #
-        ORD{String(order?._id || "").slice(-4).toUpperCase()}
+        Order No: 
+        {order.orderNumber || order?._id?.slice(-6)?.toUpperCase() || "-"}
       </p>
 
       <p>KOT No: {kot?.kotNo}</p>

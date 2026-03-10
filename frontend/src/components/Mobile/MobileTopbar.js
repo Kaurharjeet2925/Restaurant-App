@@ -12,31 +12,35 @@ export default function MobileTopTabs() {
       : "dinein";
 
   return (
-    <div className="">
-      <div className="flex bg-gray-100 rounded-xl p-2">
+    <div className="w-full px-3 pb-2 mt-[78px]">
+      <div className="flex bg-background rounded-xl p-1 border border-borderLight shadow-sm">
+
+        {/* DINE-IN */}
         <button
           onClick={() => navigate("/tables")}
-          className={`flex-1 py-2 rounded-lg font-semibold transition
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all
             ${
               active === "dinein"
-                ? "bg-[#ff4d4d] text-white shadow"
-                : "text-gray-600"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-100"
             }`}
         >
           DINE-IN
         </button>
 
+        {/* POS */}
         <button
           onClick={() => navigate("/counter-pos")}
-          className={`flex-1 py-2 rounded-lg font-semibold transition
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all
             ${
               active === "pos"
-                ? "bg-[#ff4d4d] text-white shadow"
-                : "text-gray-600"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-100"
             }`}
         >
           POS
         </button>
+
       </div>
     </div>
   );

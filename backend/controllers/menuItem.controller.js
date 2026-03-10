@@ -1,33 +1,84 @@
 const MenuItem = require("../models/menuItem.model");
+const PortionType = require("../models/portionType.model");
 
 // --------------------------------------
 // CREATE MENU ITEM
 // --------------------------------------
 exports.createItem = async (req, res) => {
   try {
-    const { name, category, price, foodType, portionType } = req.body;
+    let { name, category, price, foodType, portionType } = req.body;
 
-    if (!name || !category || !price) {
-      return res.status(400).json({ message: "All fields are required" });
+    /* ------------------------------
+       BASIC VALIDATION
+    -------------------------------*/
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({
+        message: "Item name must be at least 2 characters",
+      });
     }
 
+    if (!category) {
+      return res.status(400).json({
+        message: "Category is required",
+      });
+    }
+
+    if (!price || isNaN(price) || Number(price) <= 0) {
+      return res.status(400).json({
+        message: "Price must be a valid number greater than 0",
+      });
+    }
+
+    /* ------------------------------
+       VARIANT VALIDATION
+    -------------------------------*/
+    if (portionType) {
+      const variant = await PortionType.findById(portionType);
+
+      if (!variant) {
+        return res.status(400).json({
+          message: "Invalid variant selected",
+        });
+      }
+    }
+
+    /* ------------------------------
+       DUPLICATE ITEM CHECK
+    -------------------------------*/
+    const existing = await MenuItem.findOne({
+      name: name.trim(),
+      restaurantId: req.user.restaurantId,
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "Item already exists",
+      });
+    }
+
+    /* ------------------------------
+       IMAGE
+    -------------------------------*/
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     const item = await MenuItem.create({
-      name,
+      name: name.trim(),
       category,
-      price,
+      price: Number(price),
       foodType: foodType || "veg",
-      portionType: portionType || null, // ✅ optional
+      portionType: portionType || null,
       image,
-      restaurantId: req.user.restaurantId, // ✅ ensure tenant isolation
+      restaurantId: req.user.restaurantId,
     });
 
     res.status(201).json({
       message: "Item added successfully",
       item,
     });
+
   } catch (error) {
+    console.error("CREATE MENU ERROR:", error);
+
     res.status(500).json({
       message: "Error adding item",
       error: error.message,
@@ -61,17 +112,43 @@ exports.getItems = async (req, res) => {
 // --------------------------------------
 exports.updateItem = async (req, res) => {
   try {
-    const { name, category, price, available, foodType, portionType } = req.body;
+    let { name, category, price, available, foodType, portionType } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({
+        message: "Item name must be at least 2 characters",
+      });
+    }
+
+    if (!category) {
+      return res.status(400).json({
+        message: "Category is required",
+      });
+    }
+
+    if (!price || isNaN(price) || Number(price) <= 0) {
+      return res.status(400).json({
+        message: "Price must be a valid number",
+      });
+    }
+
+    if (portionType) {
+      const variant = await PortionType.findById(portionType);
+
+      if (!variant) {
+        return res.status(400).json({
+          message: "Invalid variant selected",
+        });
+      }
+    }
 
     const updateData = {
-      name,
+      name: name.trim(),
       category,
-      price,
+      price: Number(price),
       available,
       foodType,
-      portionType, // ✅ added
-      restaurantId: req.user.restaurantId, // ✅ ensure tenant isolation
-
+      portionType: portionType || null,
     };
 
     if (req.file) {
@@ -85,13 +162,16 @@ exports.updateItem = async (req, res) => {
     );
 
     if (!item) {
-      return res.status(404).json({ message: "Menu item not found" });
+      return res.status(404).json({
+        message: "Menu item not found",
+      });
     }
 
     res.json({
       message: "Item updated successfully",
       item,
     });
+
   } catch (error) {
     res.status(500).json({
       message: "Error updating item",

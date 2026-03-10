@@ -1,202 +1,395 @@
-const Order = require("../models/order.model");
-const ExcelJS = require("exceljs");
+import React, { useEffect, useMemo, useState } from "react";
+import apiClient from "../../apiclient/apiclient";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
+import { format } from "date-fns";
 
-exports.salesReport = async (req, res) => {
-  try {
-    const { start, end, download } = req.query;
+const SalesReport = () => {
 
-    if (!start || !end) {
-      return res.status(400).json({
-        success: false,
-        message: "Start and End date required",
-      });
+  const [from, setFrom] = useState(null);
+  const [to, setTo] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const [cards, setCards] = useState({});
+  const [chart, setChart] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [table, setTable] = useState([]);
+
+  /* ================= FETCH REPORT ================= */
+
+  const fetchReport = async () => {
+
+    if (!from || !to) {
+      alert("Please select date range");
+      return;
     }
 
-    /* ================= DATE RANGE ================= */
+    try {
 
-    const startDate = new Date(start);
-    startDate.setHours(0, 0, 0, 0);
+      const start = format(from, "yyyy-MM-dd");
+      const end = format(to, "yyyy-MM-dd");
 
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
+      const res = await apiClient.get(
+        `/reports/sales-report?start=${start}&end=${end}`
+      );
 
-    /* ================= FETCH COMPLETED ORDERS ================= */
+      setCards(res.data.cards || {});
+      setChart(res.data.chart || []);
+      setTopProducts(res.data.topProducts || []);
+      setTable(res.data.table || []);
 
-    const orders = await Order.find({
-      createdAt: { $gte: startDate, $lte: endDate },
-      status: "completed",
-    })
-      .populate({
-        path: "tableId",
-        select: "tableNumber area customerId",
-        populate: [
-          { path: "area", select: "name" },
-          { path: "customerId", select: "name phone" },
-        ],
-      })
-      .populate({
-        path: "customer",
-        select: "name phone",
-      })
-      .sort({ createdAt: 1 });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load report");
+    }
+  };
 
-    /* ================= SUMMARY ================= */
+  /* ================= DOWNLOAD EXCEL ================= */
 
-    let todaySales = 0;
-    let weekSales = 0;
-    let monthSales = 0;
-    let topProductMap = {};
+  const downloadExcel = async () => {
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    if (!from || !to) {
+      alert("Please select date range");
+      return;
+    }
 
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 6);
-    weekStart.setHours(0, 0, 0, 0);
+    try {
 
-    const monthStart = new Date(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      1
+      const start = format(from, "yyyy-MM-dd");
+      const end = format(to, "yyyy-MM-dd");
+
+      const response = await apiClient.get(
+        `/reports/sales-report?start=${start}&end=${end}&download=true`,
+        { responseType: "blob" }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `sales-report-${start}-to-${end}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+    } catch (err) {
+      console.error(err);
+      alert("Download failed");
+    }
+
+  };
+
+  /* ================= FILTER TABLE ================= */
+
+  const filteredTable = useMemo(() => {
+
+    const q = search.toLowerCase();
+
+    return table.filter((order) =>
+      order.orderNumber?.toLowerCase().includes(q) ||
+      order.customerName?.toLowerCase().includes(q) ||
+      order.tableName?.toLowerCase().includes(q) ||
+      order.areaName?.toLowerCase().includes(q)
     );
 
-    orders.forEach((order) => {
-      const created = new Date(order.createdAt);
-      const amount = order.totalAmount || 0;
+  }, [table, search]);
 
-      if (created >= todayStart) todaySales += amount;
-      if (created >= weekStart) weekSales += amount;
-      if (created >= monthStart) monthSales += amount;
+  /* ================= DEFAULT LOAD ================= */
 
-      (order.items || []).forEach((item) => {
-        topProductMap[item.name] =
-          (topProductMap[item.name] || 0) + item.qty;
-      });
-    });
+  useEffect(() => {
 
-    let topProduct = "N/A";
-    let topProductQty = 0;
+    const today = new Date();
+    const last7 = new Date();
 
-    Object.entries(topProductMap).forEach(([name, qty]) => {
-      if (qty > topProductQty) {
-        topProduct = name;
-        topProductQty = qty;
-      }
-    });
+    last7.setDate(today.getDate() - 6);
 
-    const topProducts = Object.entries(topProductMap)
-      .map(([name, quantity]) => ({ name, quantity }))
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
+    setFrom(last7);
+    setTo(today);
 
-    /* ================= CHART DATA ================= */
+  }, []);
 
-    const chartMap = {};
+  useEffect(() => {
 
-    orders.forEach((order) => {
-      const key = order.createdAt.toISOString().slice(0, 10);
-      chartMap[key] =
-        (chartMap[key] || 0) + (order.totalAmount || 0);
-    });
+    if (from && to) fetchReport();
 
-    const chart = Object.keys(chartMap).map((date) => ({
-      date,
-      amount: chartMap[date],
-    }));
+  }, [from, to]);
 
-    /* ================= TABLE DATA ================= */
+  return (
+    <div className="p-6 min-h-screen bg-background">
 
-    const table = orders.map((order) => ({
-      orderNumber:
-        order.orderNumber ||
-        order._id.toString().slice(-6),
+      {/* HEADER */}
 
-      customerName:
-  order.customer?.name ||
-  order.tableId?.customerId?.name ||
-  "Walk-in",
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-gray-900">
+          Sales Report
+        </h1>
 
-      tableName:
-        order.orderType === "counter"
-          ? "Counter"
-          : order.tableId?.tableNumber || "-",
+        <p className="text-sm text-gray-500">
+          Overview of completed sales within selected date range
+        </p>
+      </div>
 
-      areaName:
-        order.orderType === "counter"
-          ? "-"
-          : order.tableId?.area?.name || "-",
+      {/* FILTER BAR */}
 
-      subTotal: order.subTotal || 0,
-      tax: order.tax || 0,
-      serviceAmount: order.serviceAmount || 0,
-      discount: order.discount || 0,
-      totalAmount: order.totalAmount || 0,
+      <div className="flex flex-wrap items-center gap-4 mb-6 bg-card p-4 rounded-xl shadow-card border border-borderLight">
 
-      paymentMethod: order.paymentMethod || "-",
-      paymentStatus: order.paymentStatus || "-",
-      status: order.status,
-    }));
+        <div className="flex items-center gap-2">
 
-    /* ================= EXCEL DOWNLOAD ================= */
+          <label className="text-sm font-medium">From</label>
 
-    if (download === "true") {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Sales Report");
+          <DatePicker
+            selected={from}
+            onChange={setFrom}
+            dateFormat="dd-MM-yyyy"
+            className="border border-borderLight rounded px-3 py-2 w-40"
+          />
 
-      worksheet.columns = [
-        { header: "Order No", key: "orderNumber", width: 15 },
-        { header: "Customer", key: "customerName", width: 20 },
-        { header: "Table", key: "tableName", width: 15 },
-        { header: "Area", key: "areaName", width: 15 },
-        { header: "Sub Total", key: "subTotal", width: 12 },
-        { header: "Tax", key: "tax", width: 12 },
-        { header: "Service", key: "serviceAmount", width: 12 },
-        { header: "Discount", key: "discount", width: 12 },
-        { header: "Total", key: "totalAmount", width: 15 },
-        { header: "Payment Method", key: "paymentMethod", width: 15 },
-        { header: "Payment Status", key: "paymentStatus", width: 15 },
-        { header: "Status", key: "status", width: 15 },
-      ];
+        </div>
 
-      table.forEach((row) => {
-        worksheet.addRow(row);
-      });
+        <div className="flex items-center gap-2">
 
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
+          <label className="text-sm font-medium">To</label>
 
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=sales-report-${start}-to-${end}.xlsx`
-      );
+          <DatePicker
+            selected={to}
+            onChange={setTo}
+            dateFormat="dd-MM-yyyy"
+            className="border border-borderLight rounded px-3 py-2 w-40"
+          />
 
-      await workbook.xlsx.write(res);
-      return res.end();
-    }
+        </div>
 
-    /* ================= NORMAL JSON RESPONSE ================= */
+        <input
+          type="text"
+          placeholder="Search order / customer / table..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border border-borderLight rounded px-4 py-2 flex-1 min-w-[250px]"
+        />
 
-    res.json({
-      success: true,
-      cards: {
-        todaySales,
-        weekSales,
-        monthSales,
-        topProduct,
-        topProductQty,
-      },
-      chart,
-      topProducts,
-      table,
-    });
+        <button
+          onClick={fetchReport}
+          className="bg-primaryGradient text-white px-5 py-2 rounded-lg"
+        >
+          View
+        </button>
 
-  } catch (err) {
-    console.error("Sales report error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate sales report",
-    });
-  }
+        <button
+          onClick={downloadExcel}
+          className="bg-primary text-white px-5 py-2 rounded-lg"
+        >
+          Download Excel
+        </button>
+
+      </div>
+
+      {/* SUMMARY CARDS */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+        <Card title="Today Sales" value={cards.todaySales} />
+        <Card title="Last 7 Days" value={cards.weekSales} />
+        <Card title="This Month" value={cards.monthSales} />
+        <Card title="Top Product" value={cards.topProduct} />
+
+      </div>
+
+      {/* CHARTS */}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        <ChartCard title="Sales Trend">
+
+          <ResponsiveContainer width="100%" height={300}>
+
+            <LineChart data={chart}>
+
+              <CartesianGrid strokeDasharray="3 3" />
+
+              <XAxis dataKey="date" />
+              <YAxis />
+
+              <Tooltip formatter={(v) => [`₹ ${v}`, "Sales"]} />
+
+              <Line
+                type="monotone"
+                dataKey="amount"
+                stroke="#9D0942"
+                strokeWidth={3}
+              />
+
+            </LineChart>
+
+          </ResponsiveContainer>
+
+        </ChartCard>
+
+        <ChartCard title="Top Selling Products">
+
+          <ResponsiveContainer width="100%" height={300}>
+
+            <BarChart data={topProducts}>
+
+              <CartesianGrid strokeDasharray="3 3" />
+
+              <XAxis
+                dataKey="name"
+                tick={{ angle: -35, textAnchor: "end", fontSize: 12 }}
+                interval={0}
+              />
+
+              <YAxis />
+
+              <Tooltip />
+
+              <Bar dataKey="quantity" fill="#9D0942" />
+
+            </BarChart>
+
+          </ResponsiveContainer>
+
+        </ChartCard>
+
+      </div>
+
+      {/* TABLE */}
+
+      <div className="bg-card rounded-2xl shadow-card border border-borderLight">
+
+        <div className="px-6 py-4 border-b border-borderLight flex justify-between">
+
+          <h3 className="text-lg font-semibold">
+            Sales Details
+          </h3>
+
+          <span className="text-sm text-gray-500">
+            {filteredTable.length} records
+          </span>
+
+        </div>
+
+        <div className="overflow-x-auto">
+
+          <table className="min-w-full text-sm">
+
+            <thead className="bg-primaryLight text-xs uppercase text-gray-600">
+
+              <tr>
+
+                <th className="px-4 py-3 text-left">Order No</th>
+                <th className="px-4 py-3 text-left">Customer</th>
+                <th className="px-4 py-3 text-left">Table</th>
+                <th className="px-4 py-3 text-left">Area</th>
+                <th className="px-4 py-3 text-right">Total</th>
+                <th className="px-4 py-3 text-center">Payment</th>
+                <th className="px-4 py-3 text-center">Status</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody className="divide-y divide-borderLight">
+
+              {filteredTable.map((order, index) => (
+
+                <tr key={index} className="hover:bg-primaryLight">
+
+                  <td className="px-4 py-3 font-medium">
+                    {order.orderNumber}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {order.customerName}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {order.tableName}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {order.areaName}
+                  </td>
+
+                  <td className="px-4 py-3 text-right font-semibold">
+                    ₹ {order.totalAmount}
+                  </td>
+
+                  <td className="px-4 py-3 text-center capitalize">
+                    {order.paymentStatus}
+                  </td>
+
+                  <td className="px-4 py-3 text-center capitalize">
+                    {order.status}
+                  </td>
+
+                </tr>
+
+              ))}
+
+              {filteredTable.length === 0 && (
+
+                <tr>
+                  <td colSpan={7} className="text-center py-6 text-gray-500">
+                    No sales found
+                  </td>
+                </tr>
+
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
 };
+
+/* ================= COMPONENTS ================= */
+
+const Card = ({ title, value }) => (
+
+  <div className="bg-card rounded-xl shadow-card border border-borderLight p-5">
+
+    <p className="text-sm text-gray-500">
+      {title}
+    </p>
+
+    <p className="text-xl font-semibold text-gray-800">
+      {typeof value === "number" ? `₹ ${value}` : value || "N/A"}
+    </p>
+
+  </div>
+
+);
+
+const ChartCard = ({ title, children }) => (
+
+  <div className="bg-card rounded-xl shadow-card border border-borderLight p-6">
+
+    <h3 className="text-lg font-semibold mb-4">
+      {title}
+    </h3>
+
+    {children}
+
+  </div>
+
+);
+
+export default SalesReport;

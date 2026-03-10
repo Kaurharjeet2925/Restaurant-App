@@ -4,11 +4,9 @@ import { X } from "lucide-react";
 import { toast } from "react-toastify";
 
 const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
+
   const isEditing = !!item._id;
 
-  /* -----------------------------
-     FORM STATE
-  ------------------------------ */
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
@@ -18,34 +16,23 @@ const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  /* -----------------------------
-     LOAD PORTION TYPES
-  ------------------------------ */
   useEffect(() => {
-    apiClient
-      .get("/portion-types")
-      .then((res) => setPortionTypes(res.data || []))
+    apiClient.get("/portion-types")
+      .then(res => setPortionTypes(res.data || []))
       .catch(() => toast.error("Failed to load portion types"));
   }, []);
 
-  /* -----------------------------
-     SYNC ITEM DATA (FIX)
-     Handles edit reopen + id/object
-  ------------------------------ */
   useEffect(() => {
     setName(item.name || "");
     setCategory(item.category?._id || "");
     setPrice(item.price || "");
 
-    // ✅ FIX: works for populated OR id
     if (item.portionType) {
       setPortionType(
         typeof item.portionType === "object"
           ? item.portionType._id
           : item.portionType
       );
-    } else {
-      setPortionType("");
     }
 
     setPreview(
@@ -55,11 +42,9 @@ const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
     );
 
     setImage(null);
+
   }, [item]);
 
-  /* -----------------------------
-     IMAGE HANDLER
-  ------------------------------ */
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -68,139 +53,137 @@ const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
     setPreview(URL.createObjectURL(file));
   };
 
-  /* -----------------------------
-     SAVE ITEM
-  ------------------------------ */
   const handleSave = async () => {
-    if (!name || !category || !price) {
-      return toast.error("Name, category and price are required");
-    }
+
+    if (!name.trim()) return toast.error("Item name is required");
+    if (!category) return toast.error("Please select category");
+    if (!price || Number(price) <= 0)
+      return toast.error("Price must be greater than 0");
 
     const formData = new FormData();
+
     formData.append("name", name);
     formData.append("category", category);
     formData.append("price", price);
 
-    // ✅ Optional variant
-    if (portionType) {
-      formData.append("portionType", portionType);
-    }
-
-    if (image) {
-      formData.append("image", image);
-    }
+    if (portionType) formData.append("portionType", portionType);
+    if (image) formData.append("image", image);
 
     try {
+
       if (isEditing) {
-        await apiClient.put(`/menu/${item._id}`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await apiClient.put(`/menu/${item._id}`, formData);
         toast.success("Item updated");
       } else {
-        await apiClient.post("/menu", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await apiClient.post("/menu", formData);
         toast.success("Item added");
       }
 
       refresh();
       close();
+
     } catch {
       toast.error("Failed to save item");
     }
   };
 
-  /* -----------------------------
-     UI
-  ------------------------------ */
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[420px] rounded-md shadow-lg p-6 relative">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
 
-        <button onClick={close} className="absolute top-3 right-3">
-          <X size={22} />
+<div className="bg-card w-full max-w-md rounded-xl shadow-md border border-borderLight p-6 relative max-h-[90vh] overflow-y-auto">
+       <button
+  onClick={close}
+  className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition"
+>
+          <X size={20} />
         </button>
 
         <h2 className="text-xl font-bold mb-4">
           {isEditing ? "Edit Menu Item" : "Add Menu Item"}
         </h2>
 
-        {/* ITEM NAME */}
-        <label className="font-medium text-sm">Item Name</label>
+        {/* NAME */}
+        <label className="text-sm font-medium">Item Name</label>
         <input
-          className="border p-2 w-full rounded mb-3"
+         className="w-full border border-borderLight rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
         {/* CATEGORY */}
-        <label className="font-medium text-sm">Category</label>
+        <label className="text-sm font-medium">Category</label>
         <select
-          className="border p-2 w-full rounded mb-3"
+        className="w-full border border-borderLight rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         >
           <option value="">Select category</option>
+
           {categories.map((c) => (
             <option key={c._id} value={c._id}>
               {c.name}
             </option>
           ))}
+
         </select>
 
-        {/* BASE PRICE */}
-        <label className="font-medium text-sm">
+        {/* PRICE */}
+        <label className="text-sm font-medium">
           Base Price
-          <span className="text-xs text-gray-500 ml-1">
-            (used for Half / Full etc.)
-          </span>
         </label>
+
         <input
-          type="number"
-          className="border p-2 w-full rounded mb-3"
+          type="number"className="w-full border border-borderLight rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
 
-        {/* VARIANT TYPE */}
-        <label className="font-medium text-sm">
-          Variant Type
-          <span className="text-xs text-gray-500 ml-1">(optional)</span>
+        {/* VARIANT */}
+        <label className="text-sm font-medium">
+          Variant Type (optional)
         </label>
+
         <select
-          className="border p-2 w-full rounded mb-3"
+          className="w-full border border-borderLight rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
           value={portionType}
           onChange={(e) => setPortionType(e.target.value)}
         >
           <option value="">No Variants</option>
+
           {portionTypes.map((pt) => (
             <option key={pt._id} value={pt._id}>
               {pt.type}
             </option>
           ))}
+
         </select>
 
         {/* IMAGE */}
-        <label className="font-medium text-sm">Image</label>
-        <input type="file" onChange={handleImage} className="mb-3" />
+        <label className="text-sm font-medium">Image</label>
+
+        <input
+          type="file"
+          onChange={handleImage}
+          className="mb-3"
+        />
 
         {preview && (
-          <img
-            src={preview}
-            alt="preview"
-            className="w-32 h-32 object-cover rounded mb-3"
-          />
+        <img
+  src={preview}
+  alt="preview"
+  className="w-28 h-28 object-cover rounded-lg border border-borderLight mb-3"
+/>
         )}
 
         {/* SAVE */}
         <button
           onClick={handleSave}
-          className="w-full bg-[#ff4d4d] text-white py-2 rounded hover:bg-[#e63c3c]"
-        >
+className="w-full bg-primary text-white py-2.5 rounded-lg font-medium hover:opacity-90 transition"        >
           {isEditing ? "Update Item" : "Add Item"}
         </button>
 
       </div>
+
     </div>
   );
 };

@@ -6,7 +6,8 @@ const {
   createItem,
   getItems,
   updateItem,
-  deleteItem
+  deleteItem,
+
 } = require("../controllers/menuItem.controller");
 
 router.post("/menu", auth, allowAdminAndOwner, upload.single("image"), createItem);

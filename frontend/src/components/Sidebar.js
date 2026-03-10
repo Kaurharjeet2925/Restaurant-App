@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useResponsive } from "../hooks/usResponsive";
 import {
@@ -48,7 +48,9 @@ const menus = {
     { icon: <Coffee size={20} />, label: "Kitchen Dashboard", path: "/kitchen" },
   ]
 };
+
 export default function Sidebar({ open, setOpen }) {
+
   const location = useLocation();
   const { isMobile } = useResponsive();
 
@@ -61,19 +63,24 @@ export default function Sidebar({ open, setOpen }) {
     <>
       <aside
         className={`
-          w-64 bg-white shadow-xl px-4 py-6
-          h-screen overflow-y-auto
+          w-64 bg-card border-r border-borderLight shadow-sm
+          px-4 py-6 h-screen overflow-y-auto
           transition-transform duration-300
           ${isMobile ? "fixed top-0 left-0 z-40" : "relative"}
           ${open || !isMobile ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <h2 className="text-2xl font-bold text-red-500 mb-8">
+
+        {/* LOGO */}
+        <h2 className="text-2xl font-bold text-primary mb-8">
           Restro
         </h2>
 
+        {/* MENU */}
         <ul className="space-y-2">
+
           {menu.map((item, i) => {
+
             const active = location.pathname.startsWith(item.path);
 
             return (
@@ -82,11 +89,16 @@ export default function Sidebar({ open, setOpen }) {
                 to={item.path}
                 onClick={() => isMobile && setOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-2 rounded-lg transition
+                  flex items-center gap-3
+                  px-4 py-2.5
+                  rounded-lg
+                  text-sm
+                  transition
+                  
                   ${
                     active
-                      ? "bg-red-100 text-red-600 font-semibold"
-                      : "hover:bg-red-50 hover:text-red-500"
+                      ? "bg-primaryLight text-primary font-semibold"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-primary"
                   }
                 `}
               >
@@ -95,9 +107,11 @@ export default function Sidebar({ open, setOpen }) {
               </Link>
             );
           })}
+
         </ul>
       </aside>
 
+      {/* MOBILE OVERLAY */}
       {isMobile && open && (
         <div
           className="fixed inset-0 bg-black/30 z-30"

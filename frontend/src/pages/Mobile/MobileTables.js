@@ -65,9 +65,9 @@ const handleTableClick = (table) => {
   }, {});
 
   return (
-    <div className="flex-1 bg-white ">
+    <div className="flex-1 bg-white   px-4 pb-24" >
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-        🍽️ Tables
+        Tables
       </h1>
 
       {Object.keys(groupedTables).map((area) => (
@@ -148,9 +148,9 @@ const handleTableClick = (table) => {
       {/* ADD TABLE BUTTON */}
       <button
         onClick={() => setEditingTable({})}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full
-                   bg-[#ff4d4d] text-white flex items-center
-                   justify-center shadow-xl hover:bg-[#e63c3c]"
+        className="fixed bottom-20 right-5 w-14 h-14 rounded-full
+        bg-primary text-white flex items-center justify-center
+        shadow-lg active:scale-95 transition"
       >
         <Plus size={28} />
       </button>

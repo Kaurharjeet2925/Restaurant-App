@@ -7,7 +7,7 @@ import KotHistory from "../Order/KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
 import BillPrint from "../Order/BillPrint";
 import CartSheet from './CartSheet';
-
+import BillSummary from '../Order/BillSummary';
 import MenuCard from '../Order/MenuCard';
 import VariantModal from "../MenuItemManaement/VariantModal"
 // Memoized category button for performance
@@ -124,6 +124,8 @@ CartItem.displayName = 'CartItem';
 const CheckoutSheet = memo(
   ({
     cart,
+    order,
+    table,
     subtotal,
     taxAmount,
     serviceAmount,
@@ -134,8 +136,7 @@ const CheckoutSheet = memo(
     discount,
     setDiscount,
     finalTotal,
-    hasKots,
-    onMarkPaid,
+    onConfirm,
     onCancel,
   }) => (
     <>
@@ -143,117 +144,38 @@ const CheckoutSheet = memo(
 
       <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
 
-        {/* HEADER */}
-        <div className="p-4 border-b font-semibold">
-          Bill Summary
-        </div>
+        <BillSummary
+          mode="dine_in"
+          order={order}
+          table={table}
 
-        {/* ITEMS */}
-        <div className="p-4 space-y-2 text-sm">
-          {cart.filter(i => i.qty > 0).map(i => (
-            <div key={i.cartKey} className="flex justify-between">
-              <span>
-                {i.name} ({i.selectedUnit?.name}) × {i.qty}
-              </span>
-              <span>₹{(i.basePrice * i.qty).toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
+          cart={cart.map(i => ({
+            cartKey: i.cartKey || i.key,
+            name: i.name,
+            qty: i.qty,
+            basePrice: i.price,
+            selectedUnit: { name: i.unit?.name || "Regular" }
+          }))}
 
-        {/* SUBTOTAL */}
-        <div className="px-4 flex justify-between font-medium border-t pt-2">
-          <span>Subtotal</span>
-          <span>₹{subtotal.toFixed(2)}</span>
-        </div>
+          kotSubtotal={subtotal}
 
-        {/* GST */}
-        {/* GST */}
-        <div className="px-4 flex justify-between items-center text-sm mt-3 border-t pt-3">
-          <div className="flex items-center gap-2">
-            <label className="font-medium">GST (%)</label>
-            <input
-              type="number"
-              min="0"
-              value={taxPercent}
-              onChange={(e) =>
-                setTaxPercent(Number(e.target.value || 0))
-              }
-              className="w-16 p-1 border rounded"
-            />
-          </div>
-          <span className="font-medium">
-            ₹{taxAmount.toFixed(2)}
-          </span>
-        </div>
+          checkoutTaxPercent={taxPercent}
+          setCheckoutTaxPercent={setTaxPercent}
 
-        {/* SERVICE */}
-        <div className="px-4 flex justify-between items-center text-sm mt-2">
-          <div className="flex items-center gap-2">
-            <label className="font-medium">Service (%)</label>
-            <input
-              type="number"
-              min="0"
-              value={servicePercent}
-              onChange={(e) =>
-                setServicePercent(Number(e.target.value || 0))
-              }
-              className="w-16 p-1 border rounded"
-            />
-          </div>
-          <span className="font-medium">
-            ₹{serviceAmount.toFixed(2)}
-          </span>
-        </div>
+          servicePercent={servicePercent}
+          setServicePercent={setServicePercent}
 
-        {/* DISCOUNT */}
-        <div className="px-4 flex justify-between items-center text-sm mt-2">
-          <div className="flex items-center gap-2">
-            <label className="font-medium">Discount (₹)</label>
-            <input
-              type="number"
-              min="0"
-              value={discount}
-              onChange={e => setDiscount(Number(e.target.value || 0))}
-              className="w-20 p-1 border rounded"
-            />
-          </div>
-          <span className="font-medium">
-            -₹{discount.toFixed(2)}
-          </span>
-        </div>
+          taxAmount={taxAmount}
+          serviceAmount={serviceAmount}
 
-        {/* TOTAL */}
-        <div className="px-4 flex justify-between text-lg font-bold border-t pt-3 mt-2">
-          <span>Total</span>
-          <span className="text-red-500">₹{finalTotal.toFixed(2)}</span>
-        </div>
+          discount={discount}
+          setDiscount={setDiscount}
 
-        {/* WARNING */}
-        {!hasKots && (
-          <p className="px-4 text-xs text-red-500 mt-1">
-            Cannot checkout — no KOT created
-          </p>
-        )}
+          finalTotal={finalTotal}
 
-        {/* ACTIONS */}
-        <div className="p-4 flex gap-2">
-          <button
-            onClick={onMarkPaid}
-            disabled={!hasKots}
-            className={`flex-1 py-3 rounded-xl text-white font-semibold ${
-              hasKots ? "bg-[#ff4d4d]" : "bg-gray-300 cursor-not-allowed"
-            }`}
-          >
-            Mark Paid
-          </button>
-
-          <button
-            onClick={onCancel}
-            className="flex-1 bg-gray-200 py-3 rounded-xl"
-          >
-            Cancel
-          </button>
-        </div>
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
 
       </div>
     </>
@@ -431,13 +353,16 @@ const updateVariantQty = (item, unit, diff) => {
 
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="h-screen bg-white mt-[78px] flex flex-col p-5 ">
       {/* Header */}
-      <div className="native-swipe gap-2 px-3 py-2 whitespace-nowrap">
+      <div className="native-swipe gap-2 whitespace-nowrap mb-5">
   <button
     onClick={() => setActiveCat("all")}
-    className="shrink-0 px-4 py-2 rounded-full bg-red-500 text-white"
-  >
+ className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+        activeCat === "all"
+          ? "bg-primary text-white shadow"
+          : "bg-card border border-borderLight text-gray-600"
+      }`}  >
     All Items
   </button>
 
@@ -445,7 +370,11 @@ const updateVariantQty = (item, unit, diff) => {
     <button
       key={c}
       onClick={() => setActiveCat(c)}
-      className="shrink-0 px-4 py-2 rounded-full bg-gray-100"
+      className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+        activeCat === c
+          ? "bg-primary text-white shadow"
+          : "bg-card border border-borderLight text-gray-600"
+      }`}
     >
       {c}
     </button>
@@ -455,7 +384,7 @@ const updateVariantQty = (item, unit, diff) => {
 
       {/* Menu Grid */}
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 py-2 sm:p-4 pb-40">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
      {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);
@@ -468,13 +397,24 @@ const updateVariantQty = (item, unit, diff) => {
   totalQty={totalQty}
 
   /* CARD CLICK / ADD */
-  onPress={() => {
-    if (hasVariants) {
-      setVariantItem(item);   // ✅ always ask variant
-    } else {
-      addItem(item, null);
-    }
-  }}
+onPress={() => {
+  const portion = item.portionType;
+
+  // item without variants
+  if (!portion || !portion.units || portion.units.length === 0) {
+    addItem(item, { name: "Regular", value: item.price });
+    return;
+  }
+
+  // single variant
+  if (portion.units.length === 1) {
+    addItem(item, portion.units[0]);
+    return;
+  }
+
+  // multiple variants → open modal
+  setVariantItem(item);
+}}
 
   /* PLUS */
   onIncrease={() => {
@@ -509,7 +449,11 @@ const updateVariantQty = (item, unit, diff) => {
       {/* Floating Cart Button */}
     {/* ================= VIEW CART BAR ================= */}
 {cart.length > 0 && !checkoutMode && (
-  <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
+  <div className=" fixed left-4 right-4 z-50
+      bottom-[calc(env(safe-area-inset-bottom)+12px)]
+      bg-primary text-white
+      rounded-xl shadow-xl
+    ">
     <button
    onClick={() => setShowCartPage(true)}
       className="w-full flex justify-between items-center px-4 py-4"
@@ -565,7 +509,10 @@ const updateVariantQty = (item, unit, diff) => {
     hasKots={order?.kots?.length > 0}
     onMarkPaid={handlePaymentAndNavigate}
     onCancel={() => setShowCartPage(false)}
-  />
+  />    <div className="fixed inset-x-0 bottom-0 z-50 p-4 bg-white rounded-t-2xl shadow-2xl h-[80vh] flex flex-col">
+    <div className="fixed inset-x-0 bottom-0 z-50 p-4 bg-white rounded-t-2xl shadow-2xl h-[80vh] flex flex-col">
+
+
 )} */}
 
 

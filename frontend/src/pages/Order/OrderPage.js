@@ -5,11 +5,11 @@ import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import KotHistory from "./KotHistory";
 import KotPrint from "../Kitchen/Kot/KotPrint";
-
+import BillSummary from "./BillSummary";
 import BillPrint from "./BillPrint";
 import VariantModal from "../MenuItemManaement/VariantModal";
 import MenuCard from "./MenuCard";
-
+import EditKotModal from "./EditKotModal";
 const OrderPage = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -23,15 +23,24 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const searchQuery = (searchParams.get("q") || "").toLowerCase();
-
+const [editingKot, setEditingKot] = useState(null);
  const [checkoutMode, setCheckoutMode] = useState(false);
 const [variantModalItem, setVariantModalItem] = useState(null);
 const orderType = "dine_in";
 const getDefaultUnit = (portionType) => {
-  if (!portionType || !Array.isArray(portionType.units) || portionType.units.length === 0) {
-    return null;
+  // If no portionType → return default unit
+  if (
+    !portionType ||
+    !Array.isArray(portionType.units) ||
+    portionType.units.length === 0
+  ) {
+    return {
+      name: "Regular",
+      value: 100, // 100% of base price
+    };
   }
-  return portionType.units[0]; // compulsory unit
+
+  return portionType.units[0];
 };
 
 
@@ -67,7 +76,10 @@ const fetchOrder = useCallback(async (id) => {
       menuItemId: i.menuItemId,
       name: i.name,
       basePrice: i.price,
-      selectedUnit: { name: i.variant, value: 100 },
+      selectedUnit: {
+  name: i.variant || "Regular",
+  value: 100,
+},
       qty: 0,
       kotQty: 0,
       portionType: null, // optional for display only
@@ -190,13 +202,13 @@ const addItem = (menuItem, unit = null) => {
   const portion = menuItem.portionType;
   const selectedUnit = unit || getDefaultUnit(portion);
 
-  if (!selectedUnit) {
-    toast.error(`Invalid portion config for ${menuItem.name}`);
-    return;
-  }
+  // if (!selectedUnit) {
+  //   toast.error(`Invalid portion config for ${menuItem.name}`);
+  //   return;
+  // }
 
   // Use same cartKey logic as fetchOrder: menuItemId + variant name
-  const cartKey = `${menuItem._id}_${selectedUnit.name || "default"}`;
+  const cartKey = `${menuItem._id}_${selectedUnit?.name || ""}`;
 
   setCart(prev => {
     const existing = prev.find(
@@ -570,21 +582,24 @@ const updateVariantQty = (item, unit, diff) => {
 };
 
   return (
-    <div className="h-[calc(100vh-64px)] bg-gray-50 p-4">
+<div className="h-[calc(100vh-64px)] bg-gray-50 p-4 overflow-hidden">
       <div className="grid grid-cols-12 gap-2 h-full">
 
         {/* MENU */}
         <div className="col-span-8 bg-white rounded-xl p-4 overflow-y-auto">
-          <h2 className="font-semibold mb-4">Menu</h2>
-
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="sticky top-0 z-10 bg-card pb-3 mb-4 flex gap-2 flex-wrap border-b border-borderLight">
             <CategoryTab label="All" active={activeCat === "all"} onClick={() => setActiveCat("all")} />
             {filteredCategories.map((cat) => (
               <CategoryTab key={cat} label={cat} active={activeCat === cat} onClick={() => setActiveCat(cat)} />
             ))}
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid
+grid-cols-2
+sm:grid-cols-3
+md:grid-cols-4
+xl:grid-cols-5
+gap-4">
            {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);
@@ -639,53 +654,62 @@ const updateVariantQty = (item, unit, diff) => {
 
      
       {/* RIGHT */}
-<div className="col-span-4 bg-white rounded-xl p-4 flex flex-col h-full">
+<div className="col-span-4 bg-white rounded-xl flex flex-col h-full overflow-hidden">
 
   {/* TOP CONTENT (SCROLLABLE) */}
-  <div className="flex-1 overflow-y-auto pr-1">
-    
-    {/* HEADER */}
-    <div className="mb-4 border-b pb-3">
-      <div className="text-xs text-gray-500">Order ID</div>
-      <div className="font-bold text-lg text-gray-800">
-        #{orderDisplayId}
-      </div>
+  <div className="flex-1 overflow-y-auto p-4">
 
-      {/* Customer info (prefer table -> order fallback) */}
-      {((table && table?.customerId) || order?.customerId || order?.customer) && (
-        <div className="mt-2 text-sm text-gray-700 space-y-1">
-          <div>
-            <span className="font-medium">Customer:</span>{" "}
-            {(table?.customerId?.name) || (order?.customerId?.name) || order?.customer || ""}
-          </div>
-          <div>
-            <span className="font-medium">Mobile:</span>{" "}
-            {(table?.customerId?.phone) || (order?.customerId?.phone) || ""}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-2 text-sm text-gray-600">
-        Table {table?.tableNumber}
-      </div>
+{!isCheckout && (
+<>
+  {/* HEADER */}
+  <div className="mb-4 border-b pb-3">
+    <div className="text-xs text-gray-500">Order ID</div>
+    <div className="font-bold text-lg text-gray-800">
+      #{orderDisplayId}
     </div>
 
-    {/* CART ITEMS */}
-    {cart.length === 0 && (
+    {((table && table?.customerId) || order?.customerId || order?.customer) && (
+      <div className="mt-2 text-sm text-gray-700 space-y-1">
+        <div>
+          <span className="font-medium">Customer:</span>{" "}
+          {(table?.customerId?.name) ||
+            (order?.customerId?.name) ||
+            order?.customer ||
+            ""}
+        </div>
+
+        <div>
+          <span className="font-medium">Mobile:</span>{" "}
+          {(table?.customerId?.phone) ||
+            (order?.customerId?.phone) ||
+            ""}
+        </div>
+      </div>
+    )}
+
+    <div className="mt-2 text-sm text-gray-600">
+      Table {table?.tableNumber}
+    </div>
+  </div>
+
+  {cart.length === 0 && (
       <p className="text-sm text-gray-400 text-center mt-10">
         No items added
       </p>
     )}
 
     {cart.map((i) => (
-  <div key={i.cartKey} className="flex justify-between mb-3">
+  <div
+  key={i.cartKey}
+  className="flex justify-between items-center mb-3 p-2 rounded-lg hover:bg-background transition"
+>
     <div>
      <div className="font-medium flex items-center gap-2">
   {i.name}
 
   {/* 🔴 NEW ITEM DOT */}
   {i.qty > i.kotQty && (
-    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+    <span className="w-2 h-2 rounded-full bg-primary inline-block" />
   )}
 </div>
       <div className="text-xs text-gray-500">
@@ -693,207 +717,130 @@ const updateVariantQty = (item, unit, diff) => {
       </div>
     </div>
 
-    <div className="flex items-center gap-2">
-      <Minus
-        size={16}
-        className="cursor-pointer"
-        onClick={() => changeQty(i.cartKey, -1)}
-      />
-      <span>{i.qty}</span>
-      <Plus
-        size={16}
-        className="cursor-pointer"
-        onClick={() => changeQty(i.cartKey, 1)}
-      />
-      <Trash2
-        size={16}
-        className="text-red-500 cursor-pointer"
-        onClick={() => removeItem(i.cartKey)}
-      />
-    </div>
+   <div className="flex items-center gap-2 bg-background px-2 py-1 rounded">
+  <Minus
+    size={16}
+    className="cursor-pointer text-gray-600 hover:text-primary"
+    onClick={() => changeQty(i.cartKey, -1)}
+  />
+
+  <span className="font-medium w-4 text-center">
+    {i.qty}
+  </span>
+
+  <Plus
+    size={16}
+    className="cursor-pointer text-gray-600 hover:text-primary"
+    onClick={() => changeQty(i.cartKey, 1)}
+  />
+
+  <Trash2
+    size={16}
+    className="ml-2 text-red-500 cursor-pointer"
+    onClick={() => removeItem(i.cartKey)}
+  />
+</div>
   </div>
 ))}
 
 
+  {/* SEND TO KITCHEN */}
+  <button
+    onClick={sendAndPrintKOT}
+    disabled={isLocked}
+    className={`w-full py-2 mt-2 rounded-lg text-white font-medium shadow-sm transition ${
+      isLocked
+        ? "bg-gray-300 cursor-not-allowed"
+        : "bg-primary hover:opacity-90"
+    }`}
+  >
+    Send & Print KOT
+  </button>
 
-    {/* SEND TO KITCHEN */}
-   <button
-  onClick={sendAndPrintKOT}
- disabled={isLocked}
-   className={`w-full py-2 mt-2 rounded text-white ${
-        isLocked
-          ? "bg-gray-300 cursor-not-allowed"
-          : "bg-gray-800"
-      }`}
->
-  Send & Print KOT
-</button>  
   {!isCheckout && order && (
-  <div className="mt-4">
-    {order.kots && order.kots.length > 0 ? (
-      <div className="space-y-3 pb-3">
-        <KotHistory order={order} reload={reloadOrder} />
-      </div>
-    ) : (
-      <p className="text-xs text-gray-400">No KOTs yet</p>
-    )}
-  </div>
+    <div className="mt-4">
+      {order.kots && order.kots.length > 0 ? (
+        <div className="space-y-3 pb-3">
+          <KotHistory order={order} reload={reloadOrder}
+           onEdit={(kot) => setEditingKot(kot)} />
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400">No KOTs yet</p>
+      )}
+    </div>
+  )}
+</>
 )}
 
+{/* BILL SUMMARY MODE */}
+{isCheckout && (
+  <BillSummary
+  mode="dine_in"
+  order={order}
+  table={table}
+  cart={cart}
+  kotSubtotal={kotSubtotal}
 
+  checkoutTaxPercent={checkoutTaxPercent}
+  setCheckoutTaxPercent={setCheckoutTaxPercent}
 
-    {/* CHECKOUT PANEL */}
-    {isCheckout && (
-  <div className="mt-6 p-4 border rounded-lg bg-gray-50 space-y-3">
+  servicePercent={servicePercent}
+  setServicePercent={setServicePercent}
 
-    {/* HEADER */}
-    <div className="text-sm font-semibold border-b pb-2">
-      Bill Summary
-    </div>
+  taxAmount={taxAmount}
+  serviceAmount={serviceAmount}
 
-    {/* ITEMS — NO SCROLL HERE */}
-    <ul className="text-sm space-y-1">
-      {cart.filter(i => i.qty > 0).map(i => (
-        <li
-          key={i.cartKey}
-          className="flex justify-between"
-        >
-          <span>
-            {i.name} ({i.selectedUnit?.name}) × {i.qty}
-          </span>
-          <span>₹{calculateItemTotal(i)}</span>
-        </li>
-      ))}
-    </ul>
+  discount={discount}
+  setDiscount={setDiscount}
 
-    {/* SUBTOTAL */}
-    <div className="flex justify-between text-sm font-medium border-t pt-2">
-      <span>Subtotal</span>
-      <span>₹{kotSubtotal}</span>
-    </div>
+  finalTotal={finalTotal}
 
-    {/* GST */}
-    <div className="flex items-center gap-2 text-sm">
-      <label>GST (%)</label>
-      <input
-        type="number"
-        min="0"
-        value={checkoutTaxPercent}
-        onChange={(e) =>
-          setCheckoutTaxPercent(Number(e.target.value || 0))
-        }
-        className="w-20 p-1 border rounded"
-      />
-      <span className="ml-auto">₹{taxAmount}</span>
-    </div>
-
-    {/* SERVICE */}
-    <div className="flex items-center gap-2 text-sm">
-      <label>Service (%)</label>
-      <input
-        type="number"
-        min="0"
-        value={servicePercent}
-        onChange={(e) =>
-          setServicePercent(Number(e.target.value || 0))
-        }
-        className="w-20 p-1 border rounded"
-      />
-      <span className="ml-auto">₹{serviceAmount}</span>
-    </div>
-
-    {/* DISCOUNT */}
-    <div className="flex items-center gap-2 text-sm">
-      <label>Discount (₹)</label>
-      <input
-        type="number"
-        min="0"
-        value={discount}
-        onChange={(e) =>
-          setDiscount(Number(e.target.value || 0))
-        }
-        className="w-28 p-1 border rounded"
-      />
-      <span className="ml-auto">-₹{discount}</span>
-    </div>
-
-    {/* FINAL TOTAL */}
-    <div className="flex justify-between text-lg font-bold border-t pt-3">
-      <span>Total</span>
-      <span>₹{displayTotal}</span>
-    </div>
-
-    {/* WARNING */}
-    {(!order?.kots || order.kots.length === 0) && (
-      <p className="text-xs text-red-500">
-        Cannot checkout — no KOT created
-      </p>
-    )}
-
-    {/* ACTIONS */}
-    <div className="flex gap-2 pt-2">
-      <button
-        onClick={handleCashPayment}
-        disabled={!order?.kots || order.kots.length === 0}
-        className={`flex-1 py-2 rounded text-white ${
-          !order?.kots || order.kots.length === 0
-            ? "bg-gray-300 cursor-not-allowed"
-            : "bg-[#ff4d4d]"
-        }`}
-      >
-        Mark Paid
-      </button>
-
-      <button
-        onClick={() => setCheckoutMode(false)}
-        className="flex-1 bg-gray-200 py-2 rounded"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
+  onConfirm={handleCashPayment}
+  onCancel={() => setCheckoutMode(false)}
+/>
 )}
-
-  </div>
+{editingKot && (
+  <EditKotModal
+    kot={editingKot}
+    orderId={order._id}
+    reload={reloadOrder}
+    close={() => setEditingKot(null)}
+  />
+)}
+</div>
 
   {/* FOOTER (FIXED) */}
-<div className="border-t pt-3">
-
-  {/* FINAL TOTAL */}
-  <div className="flex justify-between font-bold">
-    <span>Total</span>
-    <span>
-      ₹{Number(displayTotal % 1 === 0 ? displayTotal : displayTotal.toFixed(2))}
-    </span>
-  </div>
-
-  {/* 🔎 PAID BILL BREAKDOWN (READ-ONLY) */}
-  {/* {isPaid && (
-    <div className="mt-3 text-xs text-gray-600 space-y-1">
-      <div>Subtotal: ₹{order.subTotal}</div>
-      <div>Tax: ₹{order.tax || 0}</div>
-      <div>Service: ₹{order.serviceAmount || 0}</div>
-      <div>Discount: -₹{order.discount || 0}</div>
-    </div>
-  )} */}
+{/* FOOTER */}
+<div className="p-4 border-t bg-white">
 
   {!isCheckout && !isPaid && (
     <button
-      onClick={handleStartCheckout}
-      className="w-full mt-4 bg-[#ff4d4d] text-white py-3 rounded"
+      onClick={() => setCheckoutMode(true)}
+      className="
+        w-full
+        bg-primary
+        text-white
+        py-3
+        rounded-lg
+        font-semibold
+        hover:opacity-90
+        transition
+      "
     >
       Checkout
     </button>
   )}
 
   {isPaid && (
-    <p className="mt-3 text-center text-green-600 font-semibold">
+    <div className="text-center text-green-600 font-semibold">
       ✔ Paid
-    </p>
+    </div>
   )}
-</div>
 
 </div>
+</div>
+
+
 
       </div>
   
@@ -931,7 +878,17 @@ const updateVariantQty = (item, unit, diff) => {
 };
 
 const CategoryTab = ({ label, active, onClick }) => (
-  <button onClick={onClick} className={`px-4 py-1 rounded-full ${active ? "bg-[#ff4d4d] text-white" : "bg-gray-100"}`}>
+  <button
+    onClick={onClick}
+    className={`
+      px-4 py-1.5 rounded-full text-sm font-medium transition
+      ${
+        active
+          ? "bg-primary text-white shadow-sm"
+          : "bg-background text-gray-700 hover:bg-primary/10"
+      }
+    `}
+  >
     {label}
   </button>
 );

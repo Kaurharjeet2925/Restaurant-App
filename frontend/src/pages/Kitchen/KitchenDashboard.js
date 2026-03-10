@@ -83,96 +83,44 @@ const KitchenDashboard = () => {
   const servedKots = kots.filter((k) => k.status === "served");
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PageHeader
-        title={
-          activeStatus
-            ? activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1)
-            : "Kitchen Display System"
-        }
-        backButton={!!activeStatus}
-        onBack={() => setActiveStatus(null)}
-      />
+   <div className="min-h-screen bg-background">
 
-      {loading && (
-        <div className="text-center text-gray-500 py-4">
-          Loading kitchen orders...
-        </div>
-      )}
+<PageHeader
+  title={
+    activeStatus
+      ? activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1)
+      : "Kitchen Display System"
+  }
+  backButton={!!activeStatus}
+  onBack={() => setActiveStatus(null)}
+/>
 
-      {isMobile && !activeStatus && (
-        <div className="space-y-4 p-4">
-          <StatusCard
-            title="Pending"
-            count={pendingKots.length}
-            color="bg-gradient-to-r from-red-500 to-red-400"
-            onClick={() => setActiveStatus("pending")}
-          />
+{loading && (
+  <div className="text-center text-gray-400 py-4">
+    Loading kitchen orders...
+  </div>
+)}
 
-          <StatusCard
-            title="Preparing"
-            count={preparingKots.length}
-            color="bg-gradient-to-r from-yellow-500 to-orange-400"
-            onClick={() => setActiveStatus("preparing")}
-          />
+{!isMobile && (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
 
-          <StatusCard
-            title="Ready"
-            count={readyKots.length}
-            color="bg-gradient-to-r from-green-500 to-green-400"
-            onClick={() => setActiveStatus("ready")}
-          />
+    <KotList title="Pending" kots={pendingKots} reload={loadKots} />
 
-          <StatusCard
-            title="Served"
-            count={servedKots.length}
-            color="bg-gradient-to-r from-blue-500 to-blue-400"
-            onClick={() => setActiveStatus("served")}
-          />
-        </div>
-      )}
+    <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
 
-      {isMobile && activeStatus && (
-        <>
-          {activeStatus === "pending" && (
-            <KotList title="Pending" kots={pendingKots} reload={loadKots} />
-          )}
+    <KotList
+      title="Ready"
+      kots={readyKots}
+      reload={loadKots}
+      isReadyColumn
+    />
 
-          {activeStatus === "preparing" && (
-            <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
-          )}
+    <KotList title="Served" kots={servedKots} reload={loadKots} />
 
-          {activeStatus === "ready" && (
-            <KotList
-              title="Ready"
-              kots={readyKots}
-              reload={loadKots}
-              isReadyColumn
-            />
-          )}
-
-          {activeStatus === "served" && (
-            <KotList title="Served" kots={servedKots} reload={loadKots} />
-          )}
-        </>
-      )}
-
-      {!isMobile && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 p-6">
-          <KotList title="Pending" kots={pendingKots} reload={loadKots} />
-          <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
-
-          <KotList
-            title="Ready"
-            kots={readyKots}
-            reload={loadKots}
-            isReadyColumn
-          />
-
-          <KotList title="Served" kots={servedKots} reload={loadKots} />
-        </div>
-      )}
-    </div>
+  </div>
+  
+)}
+</div>
   );
 };
 

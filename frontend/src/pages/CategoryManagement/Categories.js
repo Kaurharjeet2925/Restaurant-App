@@ -23,17 +23,19 @@ const Categories = () => {
   };
 
   return (
-    <div className="p-0 sm:p-3">
-       <PageHeader 
-         title="Menu Categories"
-         backButton={true} 
-         onBack={() => window.history.back()} 
-       />
-
+    <div className="">
+          <div className="block md:hidden mb-4 ">
+               <PageHeader title="Categories"/>
+             </div>
+       
+             {/* DESKTOP TITLE */}
+             <h1 className="hidden md:block text-3xl font-bold text-gray-800  p-5" >
+                Categories
+             </h1>
       {/* GRID */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-5">
-        
-        {/* Existing categories */}
+         <div className="px-5 pb-6 ">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 ">
+
         {categories.map((cat) => (
           <AddCategory
             key={cat._id}
@@ -41,7 +43,7 @@ const Categories = () => {
             refresh={fetchCategories}
           />
         ))}
-
+     
         {/* Show new category card */}
         {newCategory && (
           <AddCategory
@@ -58,12 +60,12 @@ const Categories = () => {
       <div className="fixed bottom-8 right-8">
         <button
           onClick={addNewCategory}
-          className="w-14 h-14 rounded-full bg-[#ff4d4d] text-white
-                     flex items-center justify-center shadow-lg 
-                     hover:bg-[#e63c3c] transition"
+         className="fixed bottom-6 right-5 md:right-6 w-14 h-14 rounded-full bg-primary text-white 
+        flex items-center justify-center shadow-lg hover:bg-primaryGradient transition"
         >
           <Plus size={26} strokeWidth={3} />
         </button>
+      </div>
       </div>
     </div>
   );

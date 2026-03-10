@@ -14,7 +14,7 @@ export default function PageHeader({ title, icon, backButton, onBack }) {
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 border-b mb-3
+      className={`flex items-center gap-3 px-4 py-4 border-b mb-3 mt-[78px]
         ${
           isMobile
             ? "bg-gradient-to-r from-purple-500 via-purple-400 to-pink-500 text-white"

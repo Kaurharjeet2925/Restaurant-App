@@ -995,53 +995,76 @@ await createNotification({
 exports.editKot = async (req, res) => {
   try {
     const { orderId, kotNo } = req.params;
-    const { items } = req.body; // full updated items array
+    const { items } = req.body;
 
-    const order = await Order.findOne({ _id: orderId, restaurantId: req.user.restaurantId });
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        message: "Items required to update KOT"
+      });
+    }
+
+    const order = await Order.findOne({
+      _id: orderId,
+      restaurantId: req.user.restaurantId
+    });
+
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
     if (order.paymentStatus === "paid") {
-      return res.status(400).json({ message: "Order already paid" });
+      return res.status(400).json({
+        message: "Order already paid"
+      });
     }
 
-    const kot = order.kots.find(k => k.kotNo === Number(kotNo));
+    const kot = order.kots.find(
+      k => k.kotNo === Number(kotNo)
+    );
+
     if (!kot) {
-      return res.status(404).json({ message: "KOT not found" });
+      return res.status(404).json({
+        message: "KOT not found"
+      });
     }
 
     if (kot.status !== "pending") {
       return res.status(400).json({
-        message: "Only pending KOT can be edited",
+        message: "Only pending KOT can be edited"
       });
     }
 
-    /* ---------------- REMOVE OLD KOT ITEMS ---------------- */
+    /* ================= REMOVE OLD ITEMS ================= */
+
     kot.items.forEach(oldItem => {
-      const idx = order.items.findIndex(
-        i => i.menuItemId.toString() === oldItem.menuItemId.toString()
+
+      const idx = order.items.findIndex(i =>
+        i.menuItemId.toString() === oldItem.menuItemId.toString() &&
+        (i.variant || "") === (oldItem.variant || "")
       );
 
       if (idx !== -1) {
+
         order.items[idx].qty -= oldItem.qty;
         order.items[idx].total -= oldItem.total;
 
         if (order.items[idx].qty <= 0) {
           order.items.splice(idx, 1);
         }
+
       }
+
     });
 
-    /* ---------------- ADD UPDATED ITEMS ---------------- */
-    let addedTotal = 0;
+    /* ================= ADD NEW ITEMS ================= */
 
-    items.forEach(i => {
+    const updatedKotItems = items.map(i => {
+
       const total = i.price * i.qty;
-      addedTotal += total;
 
-      const existing = order.items.find(
-        it => it.menuItemId.toString() === i.menuItemId.toString()
+      const existing = order.items.find(it =>
+        it.menuItemId.toString() === i.menuItemId.toString() &&
+        (it.variant || "") === (i.variant || "")
       );
 
       if (existing) {
@@ -1049,35 +1072,52 @@ exports.editKot = async (req, res) => {
         existing.total += total;
       } else {
         order.items.push({
-          ...i,
+          menuItemId: i.menuItemId,
+          name: i.name,
+          price: i.price,
+          qty: i.qty,
+          variant: i.variant || null,
           total,
-          status: "pending",
+          status: "pending"
         });
       }
+
+      return {
+        menuItemId: i.menuItemId,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        variant: i.variant || null,
+        total,
+        status: "pending"
+      };
+
     });
 
-    kot.items = items.map(i => ({
-      ...i,
-      total: i.price * i.qty,
-      status: "pending",
-    }));
+    kot.items = updatedKotItems;
+
+    /* ================= RECALCULATE ORDER ================= */
 
     order.subTotal = order.items.reduce(
-      (s, i) => s + i.price * i.qty,
+      (sum, i) => sum + i.total,
       0
     );
+
     order.totalAmount = order.subTotal;
 
     await order.save();
 
     res.json({
-      message: `KOT ${kotNo} updated`,
+      message: `KOT ${kotNo} updated successfully`,
       kot,
-      order,
+      order
     });
+
   } catch (error) {
     console.error("Edit KOT error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 };
 

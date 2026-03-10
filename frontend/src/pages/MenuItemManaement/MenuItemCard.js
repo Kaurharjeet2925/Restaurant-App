@@ -18,81 +18,79 @@ const MenuItemCard = ({ item, refresh, onEdit }) => {
   };
 
   return (
-    <div
-  className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)]
-             border border-gray-100 overflow-hidden w-full max-w-[230px] mx-auto"
->
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
 
-      {/* IMAGE LARGE */}
-      <div className="w-full h-36 overflow-hidden">
+      {/* IMAGE */}
+      <div className="w-full h-32 overflow-hidden">
         <img
           src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
           alt={item.name}
-          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          className="w-full h-full object-cover hover:scale-105 transition"
         />
       </div>
 
-      {/* CONTENT SMALL & CLEAN */}
-     <div className="p-2 space-y-1.5">
-        {/* Name + Price Row */}
+      {/* CONTENT */}
+      <div className="p-3 space-y-2">
+
+        {/* NAME + PRICE */}
         <div className="flex justify-between items-center">
-          <h2 className="text-[15px] font-semibold text-gray-800">
+          <h2 className="text-sm font-semibold text-slate-800 truncate">
             {item.name}
           </h2>
-          <p className="text-[#ff4d4d] font-bold text-sm">
+
+          <p className="text-primary font-bold text-sm">
             ₹{item.price}
           </p>
         </div>
 
-        {/* Category */}
-        <p className="text-xs text-gray-500">
+        {/* CATEGORY */}
+        <p className="text-xs text-slate-500">
           {item.category?.name}
         </p>
 
-        {/* Availability Button */}
+        {/* AVAILABILITY */}
         <button
           onClick={toggleAvailability}
           className={`text-xs px-3 py-1 rounded-md font-medium transition
-            ${item.available ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}
-          `}
+          ${
+            item.available
+              ? "bg-green-100 text-green-700"
+              : "bg-slate-200 text-slate-500"
+          }`}
         >
           {item.available ? "Available" : "Unavailable"}
         </button>
 
-        {/* ⭐ Rating Row (Figma style) */}
+        {/* FOOTER */}
         <div className="flex justify-between items-center pt-1">
+
           <div className="flex items-center gap-1 text-orange-500 text-sm">
             <Star size={14} fill="orange" />
             <span>5.0</span>
           </div>
 
-          {/* <button
-            className="bg-orange-500 text-white text-xs px-3 py-1 rounded-md shadow
-                       hover:bg-orange-600 transition"
-            onClick={onEdit}
-          >
-            Edit Product
-          </button> */}
-       
+          <div className="flex gap-3">
 
-        {/* Bottom Actions */}
-        <div className="flex justify-end gap-4 pt-2">
-          <button
-            onClick={onEdit}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            <Edit size={18} />
-          </button>
+            <button
+              onClick={onEdit}
+              className="text-primary hover:text-primaryHover"
+            >
+              <Edit size={18} />
+            </button>
 
-          <button
-            onClick={deleteItem}
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 size={18} />
-          </button>
+            <button
+              onClick={deleteItem}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 size={18} />
+            </button>
+
+          </div>
+
         </div>
+
       </div>
-      </div>
+
     </div>
   );
 };

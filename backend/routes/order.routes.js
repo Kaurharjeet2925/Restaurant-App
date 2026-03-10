@@ -21,6 +21,7 @@ const {
   getDashboardStats,
   getOrders,
   getKitchenMonitor,
+  editKot,
 } = require("../controllers/order.controller");
 
 /* ================= ORDER (WAITER / POS) ================= */
@@ -32,7 +33,7 @@ router.get("/dashboard/kitchen-monitor", auth, getKitchenMonitor);
 router.put("/orders/:orderId", auth, updateOrder);
 
 router.patch("/orders/:orderId/send-to-kitchen", auth, sendToKitchen);
-
+router.patch("/orders/:orderId/kot/:kotNo/edit", auth, editKot);
 router.get("/kitchen/kots", auth, getKitchenKots);
 router.get("/dashboard/stats", auth, getDashboardStats);
 router.put("/orders/:orderId/kot/:kotNo/item/:index/prepared", auth, markItemPrepared);

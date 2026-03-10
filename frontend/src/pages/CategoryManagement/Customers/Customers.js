@@ -2,25 +2,23 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../../apiclient/apiclient";
 import CustomerForm from "./CustomerForm";
-import { Plus, User2Icon } from "lucide-react";
 import CreditPaymentModal from "../../Credit/CreditPaymentModal";
+import PageHeader from "../../../components/pageHeader";
+
+import { Plus, Pencil, Trash2, Eye, Wallet } from "lucide-react";
 
 const Customers = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+
   const [customers, setCustomers] = useState([]);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [view, setView] = useState("all"); // all | credit
-  const [selectedOrder, setSelectedOrder] = useState(null);
-const [showCollectModal, setShowCollectModal] = useState(false);
-const [selectedCustomer, setSelectedCustomer] = useState(null);
-const [showPayModal, setShowPayModal] = useState(false);
+  const [view, setView] = useState("all");
+
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showPayModal, setShowPayModal] = useState(false);
 
   const fetchCustomers = async () => {
-    const url =
-      view === "credit"
-        ? "/customers/credit"   // 🔥 credit customers API
-        : "/customers";
-
+    const url = view === "credit" ? "/customers/credit" : "/customers";
     const res = await apiClient.get(url);
     setCustomers(res.data);
   };
@@ -29,171 +27,254 @@ const [showPayModal, setShowPayModal] = useState(false);
     fetchCustomers();
   }, [view]);
 
-  return (
-    <div className="py-6">
+  const handleView = (c) => {
+    navigate(`/customers/ledger/${c.customerId}`);
+  };
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-2 items-center">
-          <User2Icon size={28} className="text-gray-800" />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 whitespace-nowrap">
-            {view === "all" ? "All Customers" : "Credit Customers"}
-          </h1>
+  /* 🔹 FILTER CREDIT CUSTOMERS */
+  const filteredCustomers =
+    view === "credit"
+      ? customers.filter((c) => c.currentBalance !== 0)
+      : customers;
+
+  return (
+    <div className="min-h-screen">
+
+      {/* MOBILE HEADER */}
+      <div className="md:hidden mb-4">
+        <PageHeader title={view === "all" ? "Customers" : "Credit Customers"} />
+
+        <div className="flex justify-end p-5">
+          <button
+            onClick={() => setView(view === "all" ? "credit" : "all")}
+            className="px-4 py-2 text-sm rounded-lg text-white bg-primaryGradient shadow"
+          >
+            {view === "all" ? "Credit Customers" : "All Customers"}
+          </button>
         </div>
+      </div>
+
+      {/* DESKTOP HEADER */}
+      <div className="hidden md:flex justify-between items-center  p-5">
+        <h1 className="text-2xl font-bold text-gray-800">
+          {view === "all" ? "Customers" : "Credit Customers"}
+        </h1>
+
         <button
-          onClick={() =>
-            setView(view === "all" ? "credit" : "all")
-          }
-          className={`px-4 py-2 rounded-lg font-medium shadow ${
-            view === "all"
-              ? "bg-yellow-500 text-white"
-              : "bg-[#ff4d4d] text-white"
-          }`}
+          onClick={() => setView(view === "all" ? "credit" : "all")}
+          className="px-4 py-2 rounded-lg text-white font-medium bg-primaryGradient"
         >
           {view === "all" ? "Credit Customers" : "All Customers"}
         </button>
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white rounded-xl shadow-md border overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[700px]">
-            <thead className="bg-gray-50 border-b">
-  <tr>
-    <th className="text-left p-4">
-      <span className="inline sm:hidden">Name</span>
-      <span className="hidden sm:inline">Customer Name</span>
-    </th>
-    <th className="text-left p-4">
-      <span className="inline sm:hidden">Phone</span>
-      <span className="hidden sm:inline">Phone Number</span>
-    </th>
-    {view === "all" && (
-      <th className="text-left p-4">
-        <span className="inline sm:hidden">Addr</span>
-        <span className="hidden sm:inline">Address</span>
-      </th>
-    )}
-    {view === "credit" && (
-      <th className="text-right p-4">
-        <span className="inline sm:hidden">Amount</span>
-        <span className="hidden sm:inline">Current Amount</span>
-      </th>
-    )}
-    <th className="text-center p-4">
-      <span className="inline sm:hidden">Actions</span>
-      <span className="hidden sm:inline">Actions</span>
-    </th>
-  </tr>
-</thead>
+      {/* DESKTOP TABLE */}
+      <div className="hidden md:block bg-card rounded-xl shadow-card border border-borderLight overflow-hidden p-5">
 
-            <tbody>
-              {customers.map((c) => (
-<tr key={c.customerId} className="border-b hover:bg-gray-50">
+        <table className="w-full border-collapse">
 
-                <td className="p-4">{c.name}</td>
-                <td className="p-4">{c.phone}</td>
+          <thead className="bg-primaryLight/60 text-sm text-gray-700">
+            <tr>
+              <th className="px-6 py-4 text-left font-semibold">Customer</th>
+              <th className="px-6 py-4 text-left font-semibold">Phone</th>
+              <th className="px-6 py-4 text-left font-semibold">Address</th>
 
-                {/* ALL CUSTOMERS */}
-                {view === "all" && (
-                  <td className="p-4">{c.address || "-"}</td>
-                )}
+              {view === "credit" && (
+                <th className="px-6 py-4 text-right font-semibold">
+                  Current Balance
+                </th>
+              )}
 
-                {/* CREDIT CUSTOMERS */}
+              <th className="px-6 py-4 text-center font-semibold">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredCustomers.map((c) => (
+
+              <tr
+                key={c.customerId}
+                className="border-t border-borderLight hover:bg-primaryLight/40 transition"
+              >
+
+                <td className="px-6 py-4 font-medium text-gray-800">
+                  {c.name}
+                </td>
+
+                <td className="px-6 py-4 text-gray-600">
+                  {c.phone}
+                </td>
+
+                <td className="px-6 py-4 text-gray-500">
+                  {c.address || "-"}
+                </td>
+
                 {view === "credit" && (
-                  <td className="p-4 text-right font-semibold">
-                    {c.currentBalance > 0 ? (
-                      <span className="text-red-600">₹{c.currentBalance} Debit</span>
-                    ) : c.currentBalance < 0 ? (
-                      <span className="text-green-700">₹{Math.abs(c.currentBalance)} Credit</span>
-                    ) : (
-                      <span className="text-gray-500">0</span>
+                  <td className="px-6 py-4 text-right">
+
+                    {c.currentBalance > 0 && (
+                      <span className="px-3 py-1 text-xs rounded-full bg-red-100 text-red-600 font-semibold">
+                        ₹{c.currentBalance} Debit
+                      </span>
                     )}
+
+                    {c.currentBalance < 0 && (
+                      <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 font-semibold">
+                        ₹{Math.abs(c.currentBalance)} Credit
+                      </span>
+                    )}
+
                   </td>
                 )}
 
-                <td className="p-4 text-center">
+                <td className="px-6 py-4">
 
-                  {/* 🔹 ALL CUSTOMERS ACTIONS */}
-                  {view === "all" && (
-                    <>
-                      <button
-                        onClick={() => setEditingCustomer(c)}
-                        className="text-blue-600 mx-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (window.confirm("Are you sure you want to delete this customer?")) {
-    await apiClient.delete(`/customers/${c.customerId}`);
-    fetchCustomers();
-  }
-}}
-                        className="text-red-600 mx-2"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
+                  <div className="flex justify-center gap-3">
 
-                  {/* 🔹 CREDIT CUSTOMERS ACTIONS */}
-                  {view === "credit" && (
-                    <div className="flex justify-center gap-3">
-                     <button
-  className="px-3 py-1 rounded bg-green-600 text-white text-sm"
- onClick={() => {
-  setSelectedCustomer({
-    customerId: c.customerId, // ✅ NOW EXISTS
-      name: c.name,
-      totalDue: c.totalDue,
-  });
-  setShowPayModal(true);
-}}
+                    <button
+                      onClick={() => setEditingCustomer(c)}
+                      className="p-2 rounded-lg hover:bg-primaryLight text-primary"
+                    >
+                      <Pencil size={16} />
+                    </button>
 
->
-  Pay Now
-</button>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("Delete this customer?")) {
+                          await apiClient.delete(`/customers/${c.customerId}`);
+                          fetchCustomers();
+                        }
+                      }}
+                      className="p-2 rounded-lg hover:bg-red-50 text-red-500"
+                    >
+                      <Trash2 size={16} />
+                    </button>
 
+                    {view === "credit" && (
+                      <>
+                        <button
+                          onClick={() => handleView(c)}
+                          className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                        >
+                          <Eye size={16} />
+                        </button>
 
-                      <button
-                        className="px-3 py-1 rounded bg-gray-700 text-white text-sm"
-                        onClick={() => {
-                          // Navigate to customer ledger page
-                          navigate(`/customers/ledger/${c.customerId}`);
-                        }}
-                      >
-                        View
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer({
+                              customerId: c.customerId,
+                              name: c.name,
+                              totalDue: c.currentBalance,
+                            });
+                            setShowPayModal(true);
+                          }}
+                          className="p-2 rounded-lg hover:bg-green-50 text-green-600"
+                        >
+                          <Wallet size={16} />
+                        </button>
+                      </>
+                    )}
+
+                  </div>
 
                 </td>
+
               </tr>
+
             ))}
-
-            {customers.length === 0 && (
-              <tr>
-                <td colSpan="5" className="p-4 text-center text-gray-500">
-                  No customers found
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
-    </div>
 
-      {/* ➕ ADD CUSTOMER (ONLY FOR ALL) */}
+      {/* MOBILE CARDS */}
+      <div className="md:hidden space-y-3 px-5">
+
+        {filteredCustomers.map((c) => (
+
+          <div
+            key={c.customerId}
+            className="bg-card border border-borderLight rounded-xl shadow-card p-4"
+          >
+
+            <div className="flex justify-between items-start">
+
+              <div>
+                <h3 className="font-semibold text-gray-800">{c.name}</h3>
+
+                <p className="text-sm text-gray-500">{c.phone}</p>
+
+                <p className="text-xs text-gray-400 mt-1">
+                  {c.address || "No address"}
+                </p>
+              </div>
+
+              {view === "credit" && (
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    c.currentBalance > 0
+                      ? "bg-red-100 text-red-600"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  ₹{Math.abs(c.currentBalance)}{" "}
+                  {c.currentBalance > 0 ? "Debit" : "Credit"}
+                </span>
+              )}
+
+            </div>
+
+            <div className="flex justify-between items-center mt-4 text-sm">
+
+              <button
+                onClick={() => setEditingCustomer(c)}
+                className="text-primary font-medium"
+              >
+                Edit
+              </button>
+
+              {view === "credit" && (
+                <>
+                  <button
+                    onClick={() => handleView(c)}
+                    className="text-gray-700 font-medium"
+                  >
+                    View
+                  </button>
+
+                  <button
+                    className="text-green-600 font-medium"
+                    onClick={() => {
+                      setSelectedCustomer({
+                        customerId: c.customerId,
+                        name: c.name,
+                        totalDue: c.currentBalance,
+                      });
+                      setShowPayModal(true);
+                    }}
+                  >
+                    Pay
+                  </button>
+                </>
+              )}
+
+            </div>
+
+          </div>
+
+        ))}
+      </div>
+
+      {/* ADD CUSTOMER */}
       {view === "all" && (
         <button
           onClick={() => setEditingCustomer({})}
-          className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-[#ff4d4d] text-white flex items-center justify-center shadow-xl"
+          className="fixed bottom-8 right-8 w-14 h-14 rounded-full text-white bg-primaryGradient flex items-center justify-center shadow-lg"
         >
           <Plus size={28} />
         </button>
       )}
 
+      {/* CUSTOMER FORM */}
       {editingCustomer && (
         <CustomerForm
           customer={editingCustomer}
@@ -201,15 +282,15 @@ const [showPayModal, setShowPayModal] = useState(false);
           refresh={fetchCustomers}
         />
       )}
-  {showPayModal && selectedCustomer && (
-  <CreditPaymentModal
-    customer={selectedCustomer}
-    onClose={() => setShowPayModal(false)}
-    onSuccess={fetchCustomers}
-  />
-)}
 
-
+      {/* CREDIT PAYMENT */}
+      {showPayModal && selectedCustomer && (
+        <CreditPaymentModal
+          customer={selectedCustomer}
+          onClose={() => setShowPayModal(false)}
+          onSuccess={fetchCustomers}
+        />
+      )}
 
     </div>
   );

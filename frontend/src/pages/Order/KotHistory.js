@@ -73,7 +73,7 @@ const KotHistory = ({ order, reload, onEdit, onCancel, scrollable = true }) => {
 
                 {/* Edit / Cancel shown only when handlers passed and KOT editable */}
                 {(onEdit || onCancel) &&
-                  (kot.status === "pending" || kot.status === "preparing") && (
+                  (kot.status === "pending") && (
                     <>
                       {onEdit && (
                         <button
@@ -148,3 +148,4 @@ const KotHistory = ({ order, reload, onEdit, onCancel, scrollable = true }) => {
 };
 
 export default KotHistory;
+

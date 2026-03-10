@@ -7,6 +7,8 @@ import BillPrint from "../Order/BillPrint";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 import VariantModal from "../MenuItemManaement/VariantModal"
 import MenuCard from "../Order/MenuCard";
+import BillSummary from "../Order/BillSummary";
+
 const printElement = (id, title) => {
   const el = document.getElementById(id);
   if (!el) return toast.warn(`${title} not ready`);
@@ -313,17 +315,17 @@ const updateVariantQty = (item, unit, diff) => {
 };
 
   return (
-<div className="bg-white flex flex-col relative w-full max-w-none ">
+<div className="bg-white flex flex-col relative w-full max-w-none px-5 ">
 
   {/* ================= CATEGORIES (FIXED) ================= */}
 <div className="native-swipe gap-2 py-4 whitespace-nowrap">
   <button
     onClick={() => setActiveCat("all")}
-    className={`shrink-0 px-4 py-2 rounded-full transition-all font-medium ${
-      activeCat === "all"
-        ? "bg-red-500 text-white shadow-lg"
-        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-    }`}
+     className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+        activeCat === "all"
+          ? "bg-primary text-white shadow"
+          : "bg-card border border-borderLight text-gray-600"
+      }`}
   >
     All Items
   </button>
@@ -332,10 +334,10 @@ const updateVariantQty = (item, unit, diff) => {
     <button
       key={c}
       onClick={() => setActiveCat(c)}
-      className={`shrink-0 px-4 py-2 rounded-full transition-all font-medium ${
+       className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
         activeCat === c
-          ? "bg-red-500 text-white shadow-lg"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          ? "bg-primary text-white shadow"
+          : "bg-card border border-borderLight text-gray-600"
       }`}
     >
       {c}
@@ -394,7 +396,7 @@ const updateVariantQty = (item, unit, diff) => {
 {cart.length > 0 && (
   <div className="fixed left-4 right-4 z-50
         bottom-[calc(env(safe-area-inset-bottom)+1rem)]
-        bg-red-500 text-white py-3 rounded-xl
+        bg-primary text-white py-3 rounded-xl
         font-semibold shadow-xl flex justify-center gap-2">
     <button
    onClick={() => setShowCheckout(true)}
@@ -430,140 +432,66 @@ const updateVariantQty = (item, unit, diff) => {
   )} */}
 
   {/* ================= CHECKOUT BOTTOM SHEET ================= */}
-  {showCheckout && (
-    <>
-      <div
-        className="fixed inset-0 bg-black/30 z-50"
-        onClick={() => setShowCheckout(false)}
+ {showCheckout && (
+  <>
+    {/* Overlay */}
+    <div
+      className="fixed inset-0 bg-black/40 z-50"
+      onClick={() => setShowCheckout(false)}
+    />
+
+    {/* Bottom Sheet */}
+    <div className="fixed inset-x-0 bottom-0 z-50 p-4 bg-white rounded-t-2xl shadow-2xl h-[80vh] flex flex-col">
+
+      <BillSummary
+        mode="pos"
+        editable={true}
+
+        cart={cart.map(i => ({
+          cartKey: i.key,
+          name: i.name,
+          qty: i.qty,
+          basePrice: i.price,
+          selectedUnit: { name: i.unit?.name || "Default" }
+        }))}
+
+        onIncrease={(key) => changeQty(key, 1)}
+        onDecrease={(key) => changeQty(key, -1)}
+
+        kotSubtotal={subtotal}
+
+        checkoutTaxPercent={taxPercent}
+        setCheckoutTaxPercent={setTaxPercent}
+
+        servicePercent={0}
+        setServicePercent={() => {}}
+
+        taxAmount={taxAmount}
+        serviceAmount={0}
+
+        discount={discount}
+        setDiscount={setDiscount}
+
+        finalTotal={finalTotal}
+
+        onConfirm={payAndPrint}
+
+        onCredit={() => {
+          if (!cart.length) {
+            toast.info("Cart is empty");
+            return;
+          }
+          setShowCreditModal(true);
+        }}
+
+        onCancel={() => setShowCheckout(false)}
       />
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[90dvh] flex flex-col shadow-2xl">
-        {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b">
-          <h2 className="text-lg font-bold">Bill Summary</h2>
-          <button onClick={() => setShowCheckout(false)}>
-            <X />
-          </button>
-        </div>
-
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {cart.map((item) => (
-            <div
-              key={item.key}
-              className="flex justify-between items-center bg-slate-50 p-4 rounded-xl"
-            >
-              <div>
-                <p className="text-sm font-medium">
-                  {item.name}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {item.unit?.name || "Default"} × {item.qty}
-                </p>
-                <p className="text-xs text-slate-400">
-                  ₹{item.price} each
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => changeQty(item.key, -1)}
-                  className="w-7 h-7 border rounded-full"
-                >
-                  −
-                </button>
-                <span className="w-6 text-center font-semibold">
-                  {item.qty}
-                </span>
-                <button
-                  onClick={() => changeQty(item.key, 1)}
-                  className="w-7 h-7 border rounded-full"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Totals */}
-     
-<div className="border-t bg-slate-50 p-5 space-y-3">
-
-  {/* SUBTOTAL */}
-  <div className="flex justify-between text-sm">
-    <span>Subtotal</span>
-    <span>₹{subtotal}</span>
-  </div>
-
-  {/* GST */}
-  <div className="flex items-center gap-2 text-sm">
-    <label className="w-20">GST (%)</label>
-    <input
-      type="number"
-      min="0"
-      value={taxPercent}
-      onChange={(e) =>
-        setTaxPercent(Number(e.target.value || 0))
-      }
-      className="w-16 p-1 border rounded text-right"
-    />
-    <span className="ml-auto">₹{taxAmount}</span>
-  </div>
-
-  {/* DISCOUNT */}
-  <div className="flex items-center gap-2 text-sm">
-    <label className="w-20">Discount</label>
-    <input
-      type="number"
-      min="0"
-      value={discount}
-      onChange={(e) =>
-        setDiscount(Number(e.target.value || 0))
-      }
-      className="w-20 p-1 border rounded text-right"
-    />
-    <span className="ml-auto">-₹{discount}</span>
-  </div>
-
-  {/* TOTAL */}
-  <div className="flex justify-between text-lg font-bold border-t pt-3">
-    <span>Total</span>
-    <span className="text-red-500">₹{finalTotal}</span>
-  </div>
-
-
+    </div>
+  </>
+)}
   
-  <div className="flex gap-2 mt-3">
-  {/* PAY NOW */}
-  <button
-    onClick={payAndPrint}
-    className="w-full bg-red-500 text-white py-3 rounded-xl font-semibold"
-  >
-    Pay & Print
-  </button>
 
-  {/* PAY LATER */}
-  <button
-    onClick={() => {
-      if (!cart.length) {
-        toast.info("Cart is empty");
-        return;
-      }
-      setShowCreditModal(true);
-    }}
-    className="w-full bg-yellow-500 text-white py-3 rounded-xl font-semibold"
-  >
-    Pay Later
-  </button>
-</div>
-
-</div>
-
-
-      </div>
-    </>
-  )}
 {variantItem && (
   <VariantModal
     item={variantItem}

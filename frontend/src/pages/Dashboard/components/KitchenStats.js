@@ -1,65 +1,113 @@
 import React, { useEffect, useState } from "react";
 import apiClient from "../../../apiclient/apiclient";
+import {
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  CookingPot
+} from "lucide-react";
 
-const SmallKitchenCard = ({ title, value, green, red }) => {
+/* ================= SMALL CARD ================= */
+
+const SmallKitchenCard = ({ title, value, type, icon }) => {
+
+  const bgStyle = {
+    normal: "bg-white",
+    success: "bg-green-50",
+    danger: "bg-red-50"
+  };
+
+  const textStyle = {
+    normal: "text-slate-800",
+    success: "text-green-600",
+    danger: "text-red-500"
+  };
+
   return (
     <div
-      className={`rounded-xl p-3 shadow-sm border flex gap-4 item-center justify-between
-        ${green ? "bg-green-50 border-green-200" : ""}
-        ${red ? "bg-red-50 border-red-200" : ""}
-        ${!green && !red ? "bg-white border-slate-200" : ""}
-      `}
+      className={`flex items-center justify-between rounded-xl px-3 py-3 shadow-sm ${bgStyle[type]}`}
     >
-      <p className="text-xs text-slate-500">{title}</p>
-      <h3
-        className={`text-xl font-bold mt-1
-          ${green ? "text-green-600" : ""}
-          ${red ? "text-red-600" : ""}
-        `}
+
+      {/* LEFT SIDE */}
+      <div className="flex items-center gap-2 text-xs text-slate-600 min-w-0">
+
+        <div className="text-slate-500 flex-shrink-0">
+          {icon}
+        </div>
+
+        <span className="truncate">
+          {title}
+        </span>
+
+      </div>
+
+      {/* VALUE */}
+      <span
+        className={`text-base font-semibold flex-shrink-0 ${textStyle[type]}`}
       >
         {value}
-      </h3>
+      </span>
+
     </div>
   );
 };
 
+
+/* ================= MAIN COMPONENT ================= */
+
 const KitchenStats = () => {
+
   const [summary, setSummary] = useState({});
 
   const fetchStats = async () => {
-    const { data } = await apiClient.get("/dashboard/kitchen-monitor");
-    setSummary(data.summary || {});
+    try {
+      const { data } = await apiClient.get("/dashboard/kitchen-monitor");
+      setSummary(data.summary || {});
+    } catch (error) {
+      console.error("Kitchen stats error:", error);
+    }
   };
 
   useEffect(() => {
     fetchStats();
+
     const interval = setInterval(fetchStats, 10000);
+
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="space-y-2">
+
+    <div className="space-y-4 w-full">
+
       <SmallKitchenCard
         title="Orders in Kitchen"
         value={summary.kitchenCount || 0}
+        type="normal"
+        icon={<CookingPot size={18} />}
       />
 
       <SmallKitchenCard
         title="Ready for Service"
         value={summary.readyCount || 0}
-        green
+        type="success"
+        icon={<CheckCircle size={18} />}
       />
 
       <SmallKitchenCard
         title="Avg Prep Time"
         value={`${summary.avgPrep || 0} min`}
+        type="normal"
+        icon={<Clock size={18} />}
       />
 
       <SmallKitchenCard
         title="Delayed Orders"
         value={summary.delayedCount || 0}
-        red
+        type="danger"
+        icon={<AlertTriangle size={18} />}
       />
+
     </div>
   );
 };

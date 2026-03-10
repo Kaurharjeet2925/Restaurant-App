@@ -39,15 +39,17 @@ const KitchenMonitor = () => {
   return (
    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-full flex flex-col">
 
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-lg font-semibold text-slate-800">
-      Live Kitchen Orders
-    </h2>
+    <div className="flex justify-between items-center mb-4">
 
-    <span className="text-sm text-slate-500">
-      {orders.length} Active
-    </span>
-  </div>
+        <h2 className="text-lg font-semibold text-slate-800">
+          Live Kitchen Orders
+        </h2>
+
+        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+          {orders.length} Active
+        </span>
+
+      </div>
 
   <div className="flex-1 overflow-y-auto pr-2">
 
@@ -56,7 +58,7 @@ const KitchenMonitor = () => {
             No active kitchen orders
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
 
             {orders.map((order) =>
               order.runningKots?.map((kot) => {
@@ -127,9 +129,14 @@ const KitchenMonitor = () => {
   </div>
 
   {/* TABLE */}
-  <div className="text-[11px] text-gray-500 mb-1">
-    Table {order.table || "-"}
-  </div>
+<div className="text-[11px] text-gray-500 mb-1">
+  {order.area && (
+    <span className="font-medium text-slate-600">
+      {order.area}
+    </span>
+  )}{" "}
+  Table {order.table || "-"}
+</div>
 
   {/* ITEMS */}
   {/* ITEMS */}

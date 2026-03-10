@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router-dom";
 import MenuCard from "./MenuCard";
 import VariantModal from "../MenuItemManaement/VariantModal";
 import BillPrint from "../Order/BillPrint";
+import BillSummary from "./BillSummary";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
 /* ================= PRINT HELPER ================= */
 const printElement = (id, title) => {
@@ -29,7 +30,18 @@ const printElement = (id, title) => {
   win.focus();
   win.print();
 };
+const getDefaultUnit = (item) => {
+  const portion = item.portionType;
 
+  if (!portion || !Array.isArray(portion.units) || portion.units.length === 0) {
+    return {
+      name: "Regular",
+      value: 100,
+    };
+  }
+
+  return portion.units[0];
+};
 const CounterPOS = () => {
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -189,14 +201,13 @@ const finalTotal = useMemo(
 
 
   return (
-    <div className="h-[calc(100vh-64px)] bg-gray-50 p-2 sm:p-4">
+<div className="h-[calc(100vh-64px)] bg-gray-50 p-4 overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-4 h-full">
 
         {/* MENU */}
         <div className="md:col-span-8 col-span-1 bg-white rounded-xl p-2 sm:p-4 overflow-y-auto">
-          <h2 className="font-semibold mb-2 text-base sm:text-lg">Counter POS</h2>
 
-          <div className="flex gap-1 sm:gap-2 mb-2 sm:mb-4 flex-wrap">
+          <div className="sticky top-0 z-10 bg-card pb-3 mb-4 flex gap-2 flex-wrap border-b border-borderLight">
             <CategoryTab
               label="All"
               active={activeCat === "all"}
@@ -212,8 +223,12 @@ const finalTotal = useMemo(
             ))}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
-            {filteredMenu.map((item) => {
+  <div className="grid
+grid-cols-2
+sm:grid-cols-3
+md:grid-cols-4
+xl:grid-cols-5
+gap-4">            {filteredMenu.map((item) => {
               // Calculate total quantity in cart for this item
               const totalQty = cart
                 .filter((i) => i.menuItemId === item._id)
@@ -223,31 +238,44 @@ const finalTotal = useMemo(
                   key={item._id}
                   item={item}
                   totalQty={totalQty}
-                  onPress={() => {
-                    const portion = item.portionType;
-                    if (!portion || !portion.units?.length) {
-                      toast.error("Portion config missing");
-                      return;
-                    }
-                    if (portion.units.length === 1) {
-                      addItem(item, portion.units[0]);
-                    } else {
-                      setVariantItem(item);
-                    }
-                  }}
-                  onIncrease={() => {
-                    const portion = item.portionType;
-                    if (!portion || !portion.units?.length) return;
-                    if (portion.units.length === 1) {
-                      addItem(item, portion.units[0]);
-                    } else {
-                      setVariantItem(item);
-                    }
-                  }}
+                 onPress={() => {
+  const portion = item.portionType;
+
+  // No variants → use default
+  if (!portion || !portion.units?.length) {
+    addItem(item, getDefaultUnit(item));
+    return;
+  }
+
+  if (portion.units.length === 1) {
+    addItem(item, portion.units[0]);
+  } else {
+    setVariantItem(item);
+  }
+}}
+                 onIncrease={() => {
+  const portion = item.portionType;
+
+  if (!portion || !portion.units?.length) {
+    addItem(item, getDefaultUnit(item));
+    return;
+  }
+
+  if (portion.units.length === 1) {
+    addItem(item, portion.units[0]);
+  } else {
+    setVariantItem(item);
+  }
+}}
                   onDecrease={() => {
                     // Decrease qty for the first unit (if only one unit)
-                    const portion = item.portionType;
-                    if (!portion || !portion.units?.length) return;
+                   const portion = item.portionType;
+
+if (!portion || !portion.units?.length) {
+  const key = `${item._id}_Regular`;
+  changeQty(key, -1);
+  return;
+}
                     if (portion.units.length === 1) {
                       const key = `${item._id}_${portion.units[0].name}`;
                       changeQty(key, -1);
@@ -262,101 +290,43 @@ const finalTotal = useMemo(
         </div>
 
         {/* CART */}
-        <div className="md:col-span-4 col-span-1 bg-white rounded-xl p-2 sm:p-4 flex flex-col mt-2 md:mt-0">
-          <h3 className="font-semibold mb-2 text-base sm:text-lg">Bill</h3>
+       <div className="md:col-span-4 col-span-1 bg-card rounded-xl p-4 flex flex-col mt-2 md:mt-0 shadow-card border border-borderLight">
 
-          <div className="flex-1 overflow-y-auto">
-            {cart.map((i) => (
-              <div key={i.key} className="flex justify-between mb-1 sm:mb-2">
-                <div>
-                  <div className="text-xs sm:text-sm">{i.name}</div>
-                  <div className="text-[10px] sm:text-xs text-gray-500">
-                    {i.unit.name} × {i.qty}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Minus size={12} onClick={() => changeQty(i.key, -1)} />
-				<span className="text-xs sm:text-base">{i.qty}</span>
-                  <Plus size={12} onClick={() => changeQty(i.key, 1)} />
-                  <Trash2
-                    size={12}
-                    onClick={() => changeQty(i.key, -i.qty)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+ <BillSummary
+  mode="pos"
+  editable={true}
 
-        <div className="mt-4 sm:mt-6 p-2 sm:p-4 border rounded-lg bg-gray-50 space-y-2 sm:space-y-3">
+  cart={cart.map(i => ({
+    cartKey: i.key,
+    name: i.name,
+    qty: i.qty,
+    basePrice: i.price,
+    selectedUnit: { name: i.unit?.name || "Default" }
+  }))}
 
-  <div className="text-xs sm:text-sm font-semibold border-b pb-1 sm:pb-2">
-    Bill Summary
-  </div>
+  onIncrease={(key) => changeQty(key, 1)}
+  onDecrease={(key) => changeQty(key, -1)}
 
-  {/* SUBTOTAL */}
-  <div className="flex justify-between text-xs sm:text-sm">
-    <span>Subtotal</span>
-    <span>₹{subtotal}</span>
-  </div>
+  kotSubtotal={subtotal}
 
-  {/* GST */}
-  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-    <label className="w-12 sm:w-16">GST (%)</label>
-    <input
-      type="number"
-      min="0"
-      value={taxPercent}
-      onChange={(e) => setTaxPercent(Number(e.target.value || 0))}
-      className="w-12 sm:w-20 p-1 border rounded"
-    />
-    <span className="ml-auto">₹{taxAmount}</span>
-  </div>
+  checkoutTaxPercent={taxPercent}
+  setCheckoutTaxPercent={setTaxPercent}
 
-  {/* DISCOUNT */}
-  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-    <label className="w-12 sm:w-16">Discount</label>
-    <input
-      type="number"
-      min="0"
-      value={discount}
-      onChange={(e) => setDiscount(Number(e.target.value || 0))}
-      className="w-12 sm:w-20 p-1 border rounded"
-    />
-    <span className="ml-auto">-₹{discount}</span>
-  </div>
+  servicePercent={0}
+  setServicePercent={() => {}}
 
-  {/* TOTAL */}
-  <div className="flex justify-between text-base sm:text-lg font-bold border-t pt-2 sm:pt-3">
-    <span>Total</span>
-    <span>₹{finalTotal}</span>
-  </div>
+  taxAmount={taxAmount}
+  serviceAmount={0}
 
-  {/* PAY BUTTON */}
-  <div className="flex flex-row gap-1 sm:gap-2">
-  <button
-    onClick={payAndPrint}
-    className="w-full bg-red-500 text-white py-2 sm:py-3 rounded text-sm sm:text-lg mt-1 sm:mt-2"
-  >
-    Pay & Print
-  </button>
-  <button
-  onClick={() => {
-    if (!cart.length) {
-      toast.info("Cart is empty");
-      return;
-    }
-    setShowCreditModal(true);
-  }}
-  className="w-full bg-yellow-500 text-white py-2 sm:py-3 rounded text-sm sm:text-lg mt-1 sm:mt-2"
->
-  Pay Later (Credit)
-</button>
+  discount={discount}
+  setDiscount={setDiscount}
+
+  finalTotal={finalTotal}
+
+  onConfirm={payAndPrint}
+/>
 
 </div>
-</div>
-
-
-        </div>
       </div>
 
       {/* 🔥 VARIANT MODAL (shared) */}
@@ -445,9 +415,14 @@ const finalTotal = useMemo(
 const CategoryTab = ({ label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-1 rounded-full ${
-      active ? "bg-red-500 text-white" : "bg-gray-100"
-    }`}
+    className={`
+      px-4 py-1.5 rounded-full text-sm font-medium transition
+      ${
+        active
+          ? "bg-primary text-white shadow-sm"
+          : "bg-background text-gray-700 hover:bg-primary/10"
+      }
+    `}
   >
     {label}
   </button>

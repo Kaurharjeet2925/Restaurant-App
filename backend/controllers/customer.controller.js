@@ -90,41 +90,53 @@ exports.getCustomerByPhone = async (req, res) => {
 // controllers/order.controller.js
 exports.getCreditCustomers = async (req, res) => {
   try {
-    // Step 1: Get all unique credit customers from orders
-   const customers = await Order.aggregate([
-  {
-    $match: {
-      restaurantId: req.user.restaurantId,   // 🔥 REQUIRED
-      paymentType: "credit",
-      paymentStatus: { $ne: "paid" },
-      "customer.customerId": { $exists: true },
-    },
-  },
-  {
-    $group: {
-      _id: "$customer.customerId",
-      name: { $first: "$customer.name" },
-      phone: { $first: "$customer.phone" },
-    },
-  },
-]);
 
-    // Step 2: For each customer, get their latest ledger balance
-    const results = await Promise.all(
-      customers.map(async (c) => {
-        const lastLedger = await CustomerLedger.findOne({ customerId: c._id, restaurantId: req.user.restaurantId }).sort({ createdAt: -1 });
-        return {
-          customerId: c._id,
-          name: c.name,
-          phone: c.phone,
-          currentBalance: lastLedger ? lastLedger.balanceAfter : 0,
-        };
-      })
-    );
+    const customers = await Customer.aggregate([
+      {
+        $match: {
+          restaurantId: new mongoose.Types.ObjectId(req.user.restaurantId)
+        }
+      },
 
-    res.json(results);
+      {
+        $lookup: {
+          from: "customerledgers",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "ledger"
+        }
+      },
+
+      {
+        $addFields: {
+          lastLedger: { $arrayElemAt: ["$ledger", -1] }
+        }
+      },
+
+      {
+        $addFields: {
+          currentBalance: {
+            $ifNull: ["$lastLedger.balanceAfter", 0]
+          }
+        }
+      },
+
+      {
+        $project: {
+          customerId: "$_id",
+          name: 1,
+          phone: 1,
+          currentBalance: 1
+        }
+      }
+
+    ]);
+
+    res.json(customers);
+
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch credit customers" });
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch customers" });
   }
 };
 
@@ -206,29 +218,35 @@ exports.payCreditAmount = async (req, res) => {
 }).sort({ createdAt: 1 });
 
     /* ================= AUTO-ADJUST AGAINST ORDERS ================= */
-    for (const order of orders) {
-      if (remaining <= 0) break;
+  for (const order of orders) {
 
-      const due = order.dueAmount || 0;
-      const used = Math.min(due, remaining);
+  if (remaining <= 0) break;
 
-      order.dueAmount -= used;
-      remaining -= used;
-      paidAmount += used;
+  const due = order.dueAmount || 0;
+  const used = Math.min(due, remaining);
 
-      order.paymentStatus =
-        order.dueAmount === 0 ? "paid" : "partial";
-      order.paymentMethod = paymentMethod;
+  order.dueAmount -= used;
+  remaining -= used;
+  paidAmount += used;
 
-      await order.save();
+  order.paymentStatus =
+    order.dueAmount === 0 ? "paid" : "partial";
 
-      updatedOrders.push({
-        orderId: order._id,
-        adjusted: used,
-        dueAmount: order.dueAmount,
-        paymentStatus: order.paymentStatus,
-      });
-    }
+  order.paymentMethod = paymentMethod;
+
+  // 🔥 Fix for validation
+  order.createdBy = order.createdBy || req.user.id;
+
+  await order.save();
+
+  updatedOrders.push({
+    orderId: order._id,
+    adjusted: used,
+    dueAmount: order.dueAmount,
+    paymentStatus: order.paymentStatus,
+  });
+
+}
 
     /* ================= LEDGER BALANCE ================= */
    const lastLedger = await CustomerLedger.findOne({
@@ -242,13 +260,13 @@ exports.payCreditAmount = async (req, res) => {
     if (paidAmount > 0) {
       runningBalance -= paidAmount;
 
-   await CustomerLedger.create({
+  await CustomerLedger.create({
   customerId,
-  restaurantId: req.user.restaurantId,  // 🔥 REQUIRED
+  restaurantId: req.user.restaurantId,
   type: "payment",
-  credit: paidAmount,
+  credit: remaining,
   balanceAfter: runningBalance,
-  note: `Credit payment (${paymentMethod})`,
+  note: `Advance received (${paymentMethod})`,
 });
     }
 
@@ -263,6 +281,7 @@ exports.payCreditAmount = async (req, res) => {
         type: "payment",
         credit: remaining,
         balanceAfter: runningBalance,
+        restaurantId: req.user.restaurantId,   // 🔥 REQUIRED
         note: `Advance received (${paymentMethod})`,
       });
 
