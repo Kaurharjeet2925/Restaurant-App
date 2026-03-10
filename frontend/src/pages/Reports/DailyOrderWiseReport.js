@@ -16,6 +16,7 @@ import {
 import { format } from "date-fns";
 
 const SalesReport = () => {
+
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
   const [search, setSearch] = useState("");
@@ -28,9 +29,14 @@ const SalesReport = () => {
   /* ================= FETCH REPORT ================= */
 
   const fetchReport = async () => {
-    if (!from || !to) return alert("Please select date range");
+
+    if (!from || !to) {
+      alert("Please select date range");
+      return;
+    }
 
     try {
+
       const start = format(from, "yyyy-MM-dd");
       const end = format(to, "yyyy-MM-dd");
 
@@ -42,6 +48,7 @@ const SalesReport = () => {
       setChart(res.data.chart || []);
       setTopProducts(res.data.topProducts || []);
       setTable(res.data.table || []);
+
     } catch (err) {
       console.error(err);
       alert("Failed to load report");
@@ -51,9 +58,14 @@ const SalesReport = () => {
   /* ================= DOWNLOAD EXCEL ================= */
 
   const downloadExcel = async () => {
-    if (!from || !to) return alert("Please select date range");
+
+    if (!from || !to) {
+      alert("Please select date range");
+      return;
+    }
 
     try {
+
       const start = format(from, "yyyy-MM-dd");
       const end = format(to, "yyyy-MM-dd");
 
@@ -71,39 +83,47 @@ const SalesReport = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+
     } catch (err) {
       console.error(err);
       alert("Download failed");
     }
+
   };
 
   /* ================= FILTER TABLE ================= */
 
   const filteredTable = useMemo(() => {
+
     const q = search.toLowerCase();
 
-    return table.filter(
-      (order) =>
-        order.orderNumber?.toLowerCase().includes(q) ||
-        order.customerName?.toLowerCase().includes(q) ||
-        order.tableName?.toLowerCase().includes(q) ||
-        order.areaName?.toLowerCase().includes(q)
+    return table.filter((order) =>
+      order.orderNumber?.toLowerCase().includes(q) ||
+      order.customerName?.toLowerCase().includes(q) ||
+      order.tableName?.toLowerCase().includes(q) ||
+      order.areaName?.toLowerCase().includes(q)
     );
+
   }, [table, search]);
 
-  /* ================= DEFAULT DATE ================= */
+  /* ================= DEFAULT LOAD ================= */
 
   useEffect(() => {
+
     const today = new Date();
     const last7 = new Date();
+
     last7.setDate(today.getDate() - 6);
 
     setFrom(last7);
     setTo(today);
+
   }, []);
 
   useEffect(() => {
+
     if (from && to) fetchReport();
+
   }, [from, to]);
 
   return (
@@ -115,6 +135,7 @@ const SalesReport = () => {
         <h1 className="text-xl font-semibold text-gray-900">
           Sales Report
         </h1>
+
         <p className="text-sm text-gray-500">
           Overview of completed sales within selected date range
         </p>
@@ -122,26 +143,32 @@ const SalesReport = () => {
 
       {/* FILTER BAR */}
 
-      <div className="flex flex-wrap items-center gap-4 mb-6 bg-card border border-borderLight p-4 rounded-xl shadow-card">
+      <div className="flex flex-wrap items-center gap-4 mb-6 bg-card p-4 rounded-xl shadow-card border border-borderLight">
 
         <div className="flex items-center gap-2">
+
           <label className="text-sm font-medium">From</label>
+
           <DatePicker
             selected={from}
             onChange={setFrom}
             dateFormat="dd-MM-yyyy"
             className="border border-borderLight rounded px-3 py-2 w-40"
           />
+
         </div>
 
         <div className="flex items-center gap-2">
+
           <label className="text-sm font-medium">To</label>
+
           <DatePicker
             selected={to}
             onChange={setTo}
             dateFormat="dd-MM-yyyy"
             className="border border-borderLight rounded px-3 py-2 w-40"
           />
+
         </div>
 
         <input
@@ -154,14 +181,14 @@ const SalesReport = () => {
 
         <button
           onClick={fetchReport}
-          className="bg-primaryGradient text-white px-5 py-2 rounded-lg shadow-card"
+          className="bg-primaryGradient text-white px-5 py-2 rounded-lg"
         >
           View
         </button>
 
         <button
           onClick={downloadExcel}
-          className="border border-borderLight text-primary px-5 py-2 rounded-lg hover:bg-primaryLight"
+          className="bg-primary text-white px-5 py-2 rounded-lg"
         >
           Download Excel
         </button>
@@ -189,7 +216,7 @@ const SalesReport = () => {
 
             <LineChart data={chart}>
 
-              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" />
 
               <XAxis dataKey="date" />
               <YAxis />
@@ -215,7 +242,7 @@ const SalesReport = () => {
 
             <BarChart data={topProducts}>
 
-              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" />
 
               <XAxis
                 dataKey="name"
@@ -224,6 +251,7 @@ const SalesReport = () => {
               />
 
               <YAxis />
+
               <Tooltip />
 
               <Bar dataKey="quantity" fill="#9D0942" />
@@ -241,10 +269,15 @@ const SalesReport = () => {
       <div className="bg-card rounded-2xl shadow-card border border-borderLight">
 
         <div className="px-6 py-4 border-b border-borderLight flex justify-between">
-          <h3 className="text-lg font-semibold">Sales Details</h3>
+
+          <h3 className="text-lg font-semibold">
+            Sales Details
+          </h3>
+
           <span className="text-sm text-gray-500">
             {filteredTable.length} records
           </span>
+
         </div>
 
         <div className="overflow-x-auto">
@@ -254,6 +287,7 @@ const SalesReport = () => {
             <thead className="bg-primaryLight text-xs uppercase text-gray-600">
 
               <tr>
+
                 <th className="px-4 py-3 text-left">Order No</th>
                 <th className="px-4 py-3 text-left">Customer</th>
                 <th className="px-4 py-3 text-left">Table</th>
@@ -261,6 +295,7 @@ const SalesReport = () => {
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3 text-center">Payment</th>
                 <th className="px-4 py-3 text-center">Status</th>
+
               </tr>
 
             </thead>
@@ -269,7 +304,7 @@ const SalesReport = () => {
 
               {filteredTable.map((order, index) => (
 
-                <tr key={index} className="hover:bg-primaryLight transition">
+                <tr key={index} className="hover:bg-primaryLight">
 
                   <td className="px-4 py-3 font-medium">
                     {order.orderNumber}
@@ -328,7 +363,8 @@ const SalesReport = () => {
 /* ================= COMPONENTS ================= */
 
 const Card = ({ title, value }) => (
-  <div className="bg-card border border-borderLight rounded-xl shadow-card p-5">
+
+  <div className="bg-card rounded-xl shadow-card border border-borderLight p-5">
 
     <p className="text-sm text-gray-500">
       {title}
@@ -339,10 +375,12 @@ const Card = ({ title, value }) => (
     </p>
 
   </div>
+
 );
 
 const ChartCard = ({ title, children }) => (
-  <div className="bg-card border border-borderLight rounded-xl shadow-card p-6">
+
+  <div className="bg-card rounded-xl shadow-card border border-borderLight p-6">
 
     <h3 className="text-lg font-semibold mb-4">
       {title}
@@ -351,6 +389,7 @@ const ChartCard = ({ title, children }) => (
     {children}
 
   </div>
+
 );
 
 export default SalesReport;

@@ -1617,19 +1617,18 @@ exports.getDashboardStats = async (req, res) => {
     /* ================= PAYMENT STATUS ================= */
 
     const paymentStats = await Order.aggregate([
-      {
-        $match: {
-          restaurantId: req.user.restaurantId,
-          createdAt: { $gte: todayStart, $lte: todayEnd },
-        },
-      },
-      {
-        $group: {
-          _id: "$paymentStatus",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+  {
+    $match: {
+      restaurantId: req.user.restaurantId
+    }
+  },
+  {
+    $group: {
+      _id: "$paymentStatus",
+      count: { $sum: 1 }
+    }
+  }
+]);
 
     res.json({
       stats: {

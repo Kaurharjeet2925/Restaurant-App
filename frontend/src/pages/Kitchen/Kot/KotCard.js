@@ -79,117 +79,80 @@ const KotCard = ({ kot, reload, isReadyColumn = false }) => {
     localItems.every((i) => i.status === "prepared");
 
   return (
-    <div className="bg-card border border-borderLight rounded-xl shadow-card hover:shadow-lg transition overflow-hidden">
+    <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
 
-{/* HEADER */}
+      {!isReadyColumn && (
+        <div
+          className={`px-3 py-2 flex justify-between text-sm ${
+            STATUS_HEADER_COLOR[kot.status] || "bg-gray-100"
+          }`}
+        >
+          <div>
+            <p className="font-semibold">{kot.orderNumber}</p>
+            <p className="text-xs">
+              {kot.areaName} · Table {kot.tableNumber}
+            </p>
+            <p className="text-xs">KOT #{kot.kotNo}</p>
+          </div>
 
-<div className="px-4 py-3 flex justify-between items-start bg-primaryLight">
+          <span className="text-xs font-semibold">
+            ⏱ {cookingMinutes}m
+          </span>
+        </div>
+      )}
 
-<div>
+      <div className="p-3 space-y-2">
 
-<p className="font-semibold text-primary text-sm">
-{kot.orderNumber}
-</p>
+        {localItems.map((item, index) => (
+          <div
+            key={index}
+            className="flex justify-between items-center border-b pb-1 text-sm"
+          >
 
-<p className="text-xs text-gray-600">
-{kot.areaName} • Table {kot.tableNumber}
-</p>
+            <span className="text-gray-800">
+              {item.name} x{item.qty}
+            </span>
 
-<p className="text-xs text-gray-500">
-KOT #{kot.kotNo}
-</p>
+            {kot.status === "preparing" && !isReadyColumn && (
+              <input
+                type="checkbox"
+                checked={item.status === "prepared"}
+                disabled={item.status === "prepared"}
+                onChange={() => toggleItemPrepared(index)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
 
-</div>
+      {!isReadyColumn && (
+        <div className="p-3 border-t">
 
-<span className={`text-sm font-semibold ${timerColor}`}>
-⏱ {cookingMinutes}m
-</span>
+          {kot.status === "pending" && (
+            <button
+              onClick={startPreparing}
+              className="w-full py-2 bg-gray-900 text-white rounded text-sm"
+            >
+              Start Preparing
+            </button>
+          )}
 
-</div>
-
-
-{/* ITEMS */}
-
-<div className="p-4 space-y-2">
-
-{localItems.map((item,index)=>(
-<div
-key={index}
-className="flex justify-between items-center border-b border-borderLight pb-2"
->
-
-<span
-className={`text-sm ${
-item.status==="prepared"
-? "line-through text-gray-400"
-: "text-gray-800"
-}`}
->
-
-{item.name} × {item.qty}
-
-</span>
-
-{kot.status==="preparing" && !isReadyColumn && (
-
-<input
-type="checkbox"
-checked={item.status==="prepared"}
-disabled={item.status==="prepared"}
-onChange={()=>toggleItemPrepared(index)}
-className="w-4 h-4 accent-primary"
-/>
-
-)}
-
-</div>
-))}
-
-</div>
-
-
-{/* ACTIONS */}
-
-{!isReadyColumn && (
-
-<div className="p-4 border-t border-borderLight">
-
-{kot.status==="pending" && (
-
-<button
-onClick={startPreparing}
-className="w-full py-2 rounded-lg bg-primary text-white hover:bg-primaryDark transition font-medium"
->
-
-Start Preparing
-
-</button>
-
-)}
-
-{kot.status==="preparing" && (
-
-<button
-onClick={markKotReady}
-disabled={!allPrepared}
-className={`w-full py-2 rounded-lg font-medium transition ${
-allPrepared
-? "bg-green-600 hover:bg-green-700 text-white"
-: "bg-gray-200 text-gray-400 cursor-not-allowed"
-}`}
->
-
-Mark Ready
-
-</button>
-
-)}
-
-</div>
-
-)}
-
-</div>
+          {kot.status === "preparing" && (
+            <button
+              onClick={markKotReady}
+              disabled={!allPrepared}
+              className={`w-full py-2 rounded text-sm font-semibold ${
+                allPrepared
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Mark KOT Ready
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
