@@ -1616,20 +1616,41 @@ exports.getDashboardStats = async (req, res) => {
 
     /* ================= PAYMENT STATUS ================= */
 
-    const paymentStats = await Order.aggregate([
+   /* ================= PAYMENT STATUS ================= */
+
+const paymentStatsRaw = await Order.aggregate([
   {
     $match: {
-      restaurantId: req.user.restaurantId
-    }
+      restaurantId: req.user.restaurantId,
+    },
   },
   {
     $group: {
       _id: "$paymentStatus",
-      count: { $sum: 1 }
-    }
-  }
+      count: { $sum: 1 },
+    },
+  },
 ]);
 
+// Ensure all statuses exist
+const paymentSummary = {
+  paid: 0,
+  partial: 0,
+  unpaid: 0,
+};
+
+paymentStatsRaw.forEach((p) => {
+  if (paymentSummary[p._id] !== undefined) {
+    paymentSummary[p._id] = p.count;
+  }
+});
+
+// Convert to chart format
+const paymentStats = [
+  { _id: "paid", count: paymentSummary.paid },
+  { _id: "partial", count: paymentSummary.partial },
+  { _id: "unpaid", count: paymentSummary.unpaid },
+];
     res.json({
       stats: {
         totalOrders,

@@ -17,7 +17,7 @@ export default function SalesLineChart({ data = [] }) {
 
   if (!formatted.length) {
     return (
-      <div className="bg-card p-6 rounded-xl shadow-card border border-borderLight">
+      <div className=" p-5  border-borderLight">
         <h3 className="font-semibold mb-4 text-slate-800">
           Sales Trend
         </h3>
@@ -29,7 +29,7 @@ export default function SalesLineChart({ data = [] }) {
   }
 
   return (
-    <div className="bg-card p-5 rounded-xl border border-borderLight shadow-card">
+    <div className="p-5   shadow-card">
 
       <h3 className="font-semibold mb-4 text-slate-800">
         Sales Trend

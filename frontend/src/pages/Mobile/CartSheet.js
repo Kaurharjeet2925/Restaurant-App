@@ -62,7 +62,7 @@ const kotSubtotal = useMemo(() => {
 
 
   return (
-<div className="h-full bg-gray-50 flex flex-col ">
+<div className="h-full mt-20 flex flex-col ">
       {/* HEADER */}
       <div className="bg-card border-borderLight px-4 py-4 flex items-center gap-3 sticky top-0 z-10 mb-4">
         <ArrowLeft
