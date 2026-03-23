@@ -20,5 +20,5 @@ restaurantId: {
   },
   { timestamps: true }
 );
-
+areaSchema.index({ restaurantId: 1, name: 1 }, { unique: true });
 module.exports = mongoose.model("Area", areaSchema);

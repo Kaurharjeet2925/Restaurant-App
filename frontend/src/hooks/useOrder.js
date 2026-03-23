@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import apiClient from "../apiclient/apiclient";
 import { toast } from "react-toastify";
 
-export const useOrder = ({ tableId, orderType = "dine_in" }) => {
-  /* ================= CORE ================= */
+export const useOrder = ({
+  tableId,
+  carId,
+  orderType = "dine_in"
+}) => {  /* ================= CORE ================= */
   const [table, setTable] = useState(null);
   const [menu, setMenu] = useState([]);
   const [order, setOrder] = useState(null);
   const [cart, setCart] = useState([]);
+  const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
 
   /* ================= UI ================= */
@@ -26,39 +30,63 @@ export const useOrder = ({ tableId, orderType = "dine_in" }) => {
   const isLocked = checkoutMode || isPaid;
 
   /* ================= LOAD ================= */
-  useEffect(() => {
-    if (!tableId) return;
+useEffect(() => {
+  if (!tableId && !carId) return;
 
-    const load = async () => {
-      try {
-        const [tableRes, menuRes] = await Promise.all([
-          apiClient.get(`/tables/${tableId}`),
-          apiClient.get("/menu"),
-        ]);
+  const load = async () => {
+    try {
 
+      const menuRes = await apiClient.get("/menu");
+      setMenu(menuRes.data || []);
+
+      setCategories([
+        ...new Set(
+          (menuRes.data || [])
+            .map((i) => i.category?.name || i.category)
+            .filter(Boolean)
+        ),
+      ]);
+
+      // ================= TABLE =================
+      if (tableId) {
+        const tableRes = await apiClient.get(`/tables/${tableId}`);
         setTable(tableRes.data);
-        setMenu(menuRes.data || []);
-
-        setCategories([
-          ...new Set(
-            (menuRes.data || [])
-              .map((i) => i.category?.name || i.category)
-              .filter(Boolean)
-          ),
-        ]);
 
         if (tableRes.data.currentOrderId) {
           await fetchOrder(tableRes.data.currentOrderId);
         }
-      } catch {
-        toast.error("Failed to load POS");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    load();
-  }, [tableId]);
+      // ================= CAR =================
+      if (carId) {
+        const carRes = await apiClient.get(`/cars/${carId}`);
+        setCar(carRes.data);
+
+        // 🔥 check if order exists
+        const orderRes = await apiClient.get(`/orders/car/${carId}`);
+
+        if (orderRes.data) {
+          setOrder(orderRes.data);
+        } else {
+          // 🔥 create order automatically
+          const createRes = await apiClient.post(
+            `/cars/${carId}/start-order`
+          );
+
+          setOrder(createRes.data.order);
+        }
+      }
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load POS");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, [tableId, carId]);
 
   /* ================= FETCH ORDER ================= */
   const fetchOrder = useCallback(async (id) => {
@@ -316,6 +344,7 @@ const handleCashPayment = async () => {
 
  return {
   table,
+  car,
   menu,
   order,
   categories,

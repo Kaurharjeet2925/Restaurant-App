@@ -126,6 +126,7 @@ const CheckoutSheet = memo(
     cart,
     order,
     table,
+    carId,
     subtotal,
     taxAmount,
     serviceAmount,
@@ -145,7 +146,7 @@ const CheckoutSheet = memo(
       <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
 
         <BillSummary
-          mode="dine_in"
+  mode={carId ? "carobar" : "dine_in"}
           order={order}
           table={table}
 
@@ -191,24 +192,29 @@ export default function MobileOrderPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const tableId = params.get('tableId');
+  const carId = params.get('carId');
   const [showHistory, setShowHistory] = useState(false);
+  const [search, setSearch] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showCartPage, setShowCartPage] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [variantItem, setVariantItem] = useState(null);
+ const [view, setView] = useState("grid");
+const orderType = carId ? "carobar" : "dine_in";
 
 const handlePaymentAndNavigate = async () => {
   const success = await handleCashPayment();
 
   if (success) {
     setTimeout(() => {
-      navigate("/tables", { replace: true });
+      navigate(carId ? "/car-o-bar" : "/tables", { replace: true });
     }, 1200); // ⬅️ increase delay
   }
 };
 
 const {
   table,
+  car,
   menu,
   categories,
   activeCat,
@@ -237,8 +243,9 @@ const {
   handleStartCheckout,
   handleCashPayment,
   setCheckoutMode,
-} = useOrder({ tableId });
-
+} = useOrder({tableId,
+  carId,
+  orderType});
 useEffect(() => {
   if (!order || order.paymentStatus !== "paid") return;
 
@@ -267,15 +274,24 @@ useEffect(() => {
 
   // Filter menu
   const filteredMenu = useMemo(() => {
-    if (activeCat === 'all') return menu;
-    return menu.filter((i) => (i.category?.name || i.category) === activeCat);
-  }, [menu, activeCat]);
+  let items = menu;
 
-  if (!tableId) {
-    toast.info('Select a table first');
-    navigate('/tables');
-    return null;
+  // category filter
+  if (activeCat !== "all") {
+    items = items.filter(
+      (i) => (i.category?.name || i.category) === activeCat
+    );
   }
+
+  // search filter
+  if (search.trim()) {
+    items = items.filter((i) =>
+      i.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  return items;
+}, [menu, activeCat, search]);
 
   const handleAddItem = (item, onOpenVariant) => {
     const portion = item.portionType;
@@ -291,8 +307,9 @@ useEffect(() => {
       onOpenVariant(item);
     }
   };
-  const orderDisplayId = order?._id ? `ORD${String(order._id).slice(-4).toUpperCase()}` : "";
-
+const orderDisplayId =
+  order?.orderNumber ||
+  (order?._id ? `ORD${String(order._id).slice(-4).toUpperCase()}` : "");
   if (showCartPage) {
     return (
       <CartSheet
@@ -301,7 +318,9 @@ useEffect(() => {
         hasNewItems={hasNewItems}
         isLocked={isLocked}
         order={order}
+        
         table={table}
+        car={car} // ✅ ADD
         orderDisplayId={orderDisplayId}
         onBack={() => setShowCartPage(false)}
         onSendKot={sendAndPrintKOT}
@@ -355,6 +374,28 @@ const updateVariantQty = (item, unit, diff) => {
   return (
     <div className="h-screen bg-white mt-[78px] flex flex-col p-5 ">
       {/* Header */}
+      {/* <div className="mb-2 text-sm text-gray-600 font-medium">
+ <div className="mb-2 text-sm text-gray-600 font-medium">
+  {tableId && `Table ${table?.tableNumber}`}
+  {carId && `Car ${car?.carNo}`}
+  
+  {order?.customer?.customerId?.name && (
+    <div className="text-xs text-gray-500">
+       {order.customer.customerId.name}
+    </div>
+  )}
+</div>
+</div> */}
+      {/* ================= SEARCH BAR ================= */}
+<div className="mb-3">
+  <input
+    type="text"
+    placeholder="Search menu items..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+  />
+</div>
       <div className="native-swipe gap-2 whitespace-nowrap mb-5">
   <button
     onClick={() => setActiveCat("all")}
@@ -381,11 +422,30 @@ const updateVariantQty = (item, unit, diff) => {
   ))}
 </div>
 
+<div className="flex justify-end gap-2 mb-2">
+  <button
+    onClick={() => setView("grid")}
+    className={`px-3 py-1 rounded ${view === "grid" ? "bg-primary text-white" : "bg-gray-200"}`}
+  >
+    Grid
+  </button>
 
+  <button
+    onClick={() => setView("list")}
+    className={`px-3 py-1 rounded ${view === "list" ? "bg-primary text-white" : "bg-gray-200"}`}
+  >
+    List
+  </button>
+</div>
       {/* Menu Grid */}
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-     {filteredMenu.map((item) => {
+<div
+  className={`pb-40 w-full ${
+    view === "grid"
+      ? "grid grid-cols-2 sm:grid-cols-4 gap-2"
+      : "flex flex-col gap-2"
+  }`}
+>      {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);
   const hasVariants = item.portionType?.units?.length > 1;
@@ -393,9 +453,10 @@ const updateVariantQty = (item, unit, diff) => {
 
   return (
     <MenuCard
+    key={item._id}
   item={item}
   totalQty={totalQty}
-
+view={view}
   /* CARD CLICK / ADD */
 onPress={() => {
   const portion = item.portionType;
@@ -423,7 +484,9 @@ onPress={() => {
       setVariantItem(item);
     } else {
       // ✅ only one variant → safe increment
-      changeQty(variantsInCart[0].cartKey, 1);
+if (variantsInCart.length > 0) {
+  changeQty(variantsInCart[0].cartKey, 1);
+}
     }
   }}
 
@@ -434,7 +497,10 @@ onPress={() => {
       setVariantItem(item);
     } else {
       // ✅ only one variant → safe decrement
-      changeQty(variantsInCart[0].cartKey, -1);
+      if (variantsInCart.length > 0) {
+        changeQty(variantsInCart[0].cartKey, -1);
+      }
+      
     }
   }}
 />
@@ -535,6 +601,8 @@ onPress={() => {
   <div id="bill-print">
     <BillPrint
       order={order}
+      table={table}
+      car={car} // ✅ ADD
       subtotal={subtotal}
       taxAmount={taxAmount}
       serviceAmount={serviceAmount}

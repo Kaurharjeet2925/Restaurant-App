@@ -73,11 +73,13 @@ const MobilePOS = () => {
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedUnit, setSelectedUnit] = useState(null);
-const [variantQty, setVariantQty] = useState(1);
+  const [variantQty, setVariantQty] = useState(1);
+  const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
   const [cart, setCart] = useState([]);
   const [taxPercent, setTaxPercent] = useState(0);
 const [order, setOrder] = useState(null);
+const [view, setView] = useState("grid");
 const [billMeta, setBillMeta] = useState(null);
 const [showCreditModal, setShowCreditModal] = useState(false);
 const [discount, setDiscount] = useState(0);
@@ -100,13 +102,46 @@ const [discount, setDiscount] = useState(0);
     });
   }, []);
 
-  const filteredMenu =
-    activeCat === "all"
-      ? menu
-      : menu.filter(
-          (i) => (i.category?.name || i.category) === activeCat
-        );
+   const filteredMenu = useMemo(() => {
+  let items = menu;
 
+  // category filter
+  if (activeCat !== "all") {
+    items = items.filter(
+      (i) => (i.category?.name || i.category) === activeCat
+    );
+  }
+
+  // search filter
+  if (search.trim()) {
+    items = items.filter((i) =>
+      i.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  return items;
+}, [menu, activeCat, search]);
+
+useEffect(() => {
+  if (!search.trim()) return;
+
+  const match = menu.find((i) =>
+    i.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (match) {
+    const itemCategory = match.category?.name || match.category;
+
+    if (itemCategory && itemCategory !== activeCat) {
+      setActiveCat(itemCategory);
+    }
+  }
+}, [search, menu]);
+useEffect(() => {
+  if (!search.trim()) {
+    setActiveCat("all");
+  }
+}, [search]);
   /* ================= CART ================= */
 const addItem = (item, unit, qty = 1) => {
   const key = `${item._id}_${unit?.name || "default"}`;
@@ -315,8 +350,16 @@ const updateVariantQty = (item, unit, diff) => {
 };
 
   return (
-<div className="bg-white flex flex-col relative w-full max-w-none px-5 ">
-
+    <div className="h-screen bg-white flex  pt-0.5 flex-col p-5 ">
+<div className="mb-3">
+    <input
+    type="text"
+    placeholder="Search menu items..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+  />
+</div>
   {/* ================= CATEGORIES (FIXED) ================= */}
 <div className="native-swipe gap-2 py-4 whitespace-nowrap">
   <button
@@ -344,12 +387,31 @@ const updateVariantQty = (item, unit, diff) => {
     </button>
   ))}
 </div>
+<div className="flex justify-end gap-2 mb-2">
+  <button
+    onClick={() => setView("grid")}
+    className={`px-3 py-1 rounded ${view === "grid" ? "bg-primary text-white" : "bg-gray-200"}`}
+  >
+    Grid
+  </button>
 
+  <button
+    onClick={() => setView("list")}
+    className={`px-3 py-1 rounded ${view === "list" ? "bg-primary text-white" : "bg-gray-200"}`}
+  >
+    List
+  </button>
+</div>
 
   {/* ================= MENU (ONLY THIS SCROLLS) ================= */}
   <div className="flex-1 overflow-y-auto w-full">
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-3 pb-40 w-full">
-       {filteredMenu.map((item) => {
+<div
+  className={`pb-40 w-full ${
+    view === "grid"
+      ? "grid grid-cols-2 sm:grid-cols-4 gap-2"
+      : "flex flex-col gap-2"
+  }`}
+>       {filteredMenu.map((item) => {
   const totalQty = getItemTotalQty(item._id);
   const variantsInCart = getItemVariants(item._id);
   const hasVariants = item.portionType?.units?.length > 1;
@@ -357,8 +419,9 @@ const updateVariantQty = (item, unit, diff) => {
 
   return (
   <MenuCard
-  item={item}
+ item={item}
   totalQty={totalQty}
+  view={view}
   onPress={() => {
     if (hasVariants) {
       setVariantItem(item);     // ✅ MODAL OPENS

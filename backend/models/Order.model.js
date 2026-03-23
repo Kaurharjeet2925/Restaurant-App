@@ -71,7 +71,7 @@ const orderSchema = new mongoose.Schema(
     /* 🔹 ORDER TYPE */
     orderType: {
       type: String,
-      enum: ["dine_in", "counter"],
+      enum: ["dine_in", "counter","carobar"],
       required: true,
     },
     orderNumber: {
@@ -93,7 +93,14 @@ const orderSchema = new mongoose.Schema(
         return this.orderType === "dine_in";
       },
     },
-
+    carId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Car",
+      required: function () {
+        return this.orderType === "carobar";
+      },
+    },
+    carNo: String,
     /* 🔹 CUSTOMER (DINE-IN OR CREDIT) */
     customer: {
       customerId: {
@@ -149,33 +156,28 @@ const orderSchema = new mongoose.Schema(
 );
 
 /* 🔐 PRE-SAVE HOOK: GENERATE ORDER NUMBER */
-orderSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    try {
-     const counterDoc = await OrderCounter.findOneAndUpdate(
-  {
-    restaurantId: this.restaurantId,
-    orderType: this.orderType,
-  },
-  { $inc: { counter: 1 } },
-  { new: true, upsert: true }
-);
+orderSchema.pre("save", async function () {
 
-      const counterValue = counterDoc.counter.toString().padStart(5, "0");
-      this.orderNumber =
-        this.orderType === "dine_in" ? `DINE${counterValue}` : `POS${counterValue}`;
-    } catch (error) {
-      if (typeof next === "function") {
-        next(error);
-      } else {
-        throw error; 
-      }
-      return; 
-    }
-  }
-  if (typeof next === "function") {
-    next();
-  }
+  if (!this.isNew) return;
+
+  const counterDoc = await OrderCounter.findOneAndUpdate(
+    {
+      restaurantId: this.restaurantId,
+      orderType: this.orderType,
+    },
+    { $inc: { counter: 1 } },
+    { new: true, upsert: true }
+  );
+
+  const counterValue = counterDoc.counter.toString().padStart(5, "0");
+
+  let prefix = "ORD";
+
+  if (this.orderType === "dine_in") prefix = "DINE";
+  if (this.orderType === "counter") prefix = "POS";
+  if (this.orderType === "carobar") prefix = "CAR";
+
+  this.orderNumber = `${prefix}${counterValue}`;
 });
 
 module.exports = mongoose.model("Order", orderSchema);

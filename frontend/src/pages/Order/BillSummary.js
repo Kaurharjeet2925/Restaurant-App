@@ -35,11 +35,10 @@ onIncrease,
       ? (receivedAmount - finalTotal).toFixed(2)
       : 0;
 
-  const customerName =
-    table?.customerId?.name ||
-    order?.customerId?.name ||
-    order?.customer ||
-    "Walk-in Customer";
+ const customerName =
+  table?.customerId?.name ||
+  order?.customer?.customerId?.name ||
+  "Walk-in Customer";
 
   return (
     <div className="flex flex-col h-full">
@@ -60,40 +59,44 @@ onIncrease,
       </div>
 
       {/* ORDER INFO */}
-	   {mode === "dine_in" && (
-      <div className="border-b py-2 text-xs space-y-0.5">
+	  <div className="border-b py-2 text-xs space-y-0.5">
 
-       
-          <>
-            <div>
-              <span className="font-medium">Order:</span> #{order?.orderNumber}
-            </div>
+  <div>
+    <span className="font-medium">Order:</span> #{order?.orderNumber}
+  </div>
 
-            <div>
-              <span className="font-medium">Customer:</span> {customerName}
-            </div>
+  <div>
+    <span className="font-medium">Customer:</span> {customerName}
+  </div>
 
-            <div>
-              <span className="font-medium">Table:</span> {table?.tableNumber}
-            </div>
-
-            <div>
-              <span className="font-medium">Area:</span> {table?.area?.name}
-            </div>
-          </>
-        
-
-        {/* {mode === "pos" && (
-          <div>
-		
-              <span className="font-medium">Order:</span> #{order?.orderNumber}
-            
-            <span className="font-medium">Customer:</span> {customerName}
-          </div>
-        )} */}
-
+  {/* TABLE ORDER */}
+  {mode === "dine_in" && (
+    <>
+      <div>
+        <span className="font-medium">Table:</span> {table?.tableNumber}
       </div>
-)}
+
+      <div>
+        <span className="font-medium">Area:</span> {table?.area?.name}
+      </div>
+    </>
+  )}
+
+  {/* CAR ORDER */}
+  {mode === "carobar" && (
+    <div>
+      <span className="font-medium">Car:</span> {order?.carNo}
+    </div>
+  )}
+
+  {/* POS ORDER */}
+  {mode === "pos" && (
+    <div>
+      <span className="font-medium">Order Type:</span> Counter / Takeaway
+    </div>
+  )}
+
+</div>
       {/* SCROLLABLE ITEMS */}
       <div className="flex-1 overflow-y-auto py-3 space-y-2">
 

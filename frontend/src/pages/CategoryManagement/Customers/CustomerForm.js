@@ -18,8 +18,7 @@ const CustomerForm = ({
 
   // 🔍 Lookup by phone (ONLY for dine-in)
   const lookupByPhone = async () => {
-    if (!["dine-in", "counter"].includes(mode) || !phone) return;
-
+if (!["dine-in", "counter", "carobar"].includes(mode) || !phone) return;
     try {
       setLoading(true);
       const res = await apiClient.get(`/by-phone/${phone}`);

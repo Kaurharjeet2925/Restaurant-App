@@ -45,5 +45,9 @@ const tableSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+tableSchema.index(
+  { restaurantId: 1, tableNumber: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model("Table", tableSchema);

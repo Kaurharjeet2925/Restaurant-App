@@ -13,6 +13,7 @@ const MenuCard = ({
   onIncrease,
   onDecrease,
   disabled = false,
+  view="grid"
 }) => {
   const cardRef = useRef(null);
 
@@ -31,24 +32,24 @@ const MenuCard = ({
   };
 
   return (
-    <div
-      ref={cardRef}
-      onClick={!disabled ? onPress : undefined}
-      onPointerDown={handlePointerDown}
-      onPointerUp={resetScale}
-      onPointerLeave={resetScale}
-      className={`
-        bg-card rounded-xl overflow-hidden
-        border border-borderLight
-        shadow-card
-        cursor-pointer select-none
-        transition-transform duration-150 ease-out
-        hover:shadow-md
-        ${disabled ? "opacity-50 cursor-not-allowed" : ""}
-      `}
-    >
+   <div
+  ref={cardRef}
+  onClick={!disabled ? onPress : undefined}
+  onPointerDown={handlePointerDown}
+  onPointerUp={resetScale}
+  onPointerLeave={resetScale}
+  className={`bg-card rounded-xl border border-borderLight shadow-card cursor-pointer transition ${
+    view === "list" ? "flex items-center p-2" : ""
+  } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+>
       {/* IMAGE */}
-      <div className="h-20 bg-background overflow-hidden">
+      <div
+  className={`bg-background overflow-hidden ${
+    view === "grid"
+      ? "h-20 w-full"
+      : "h-16 w-16 rounded-lg shrink-0"
+  }`}
+>
         {item.image ? (
           <img
             src={`${process.env.REACT_APP_IMAGE_URL}${item.image}`}
@@ -63,7 +64,7 @@ const MenuCard = ({
       </div>
 
       {/* INFO */}
-      <div className="p-2">
+      <div className={`${view === "list" ? "flex-1 px-3" : "p-2"}`}>
         <h3 className="text-xs font-semibold line-clamp-2 text-gray-800">
           {item.name}
         </h3>

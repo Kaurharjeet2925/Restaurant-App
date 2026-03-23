@@ -14,6 +14,10 @@ const OrderPage = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const tableId = params.get("tableId");
+const carId = params.get("carId");
+const carNo = params.get("carNo");
+
+const orderSourceId = tableId || carId;
 
   const [table, setTable] = useState(null);
   const [menu, setMenu] = useState([]);
@@ -26,7 +30,7 @@ const OrderPage = () => {
 const [editingKot, setEditingKot] = useState(null);
  const [checkoutMode, setCheckoutMode] = useState(false);
 const [variantModalItem, setVariantModalItem] = useState(null);
-const orderType = "dine_in";
+const orderType = carId ? "carobar" : "dine_in";
 const getDefaultUnit = (portionType) => {
   // If no portionType → return default unit
   if (
@@ -51,13 +55,12 @@ const getDefaultUnit = (portionType) => {
     [order]
   );
   
-  useEffect(() => {
-    
-    if (!tableId) {
-      toast.info("Please select a table first");
-      navigate("/tables", { replace: true });
-    }
-  }, [tableId, navigate]);
+ useEffect(() => {
+  if (!tableId && !carId) {
+    toast.info("Please select a table or car first");
+    navigate("/tables", { replace: true });
+  }
+}, [tableId, carId, navigate]);
 
   /* ================= FETCH ORDER ================= */
 const fetchOrder = useCallback(async (id) => {
@@ -108,32 +111,52 @@ const fetchOrder = useCallback(async (id) => {
     if (order?._id) fetchOrder(order._id);
   }, [fetchOrder, order?._id]);
   /* ================= LOAD ================= */
-  useEffect(() => {
-    if (!tableId) return;
+ useEffect(() => {
+  if (!orderSourceId) return;
 
-    const loadData = async () => {
-      try {
-        const [tableRes, menuRes] = await Promise.all([
-          apiClient.get(`/tables/${tableId}`),
-          apiClient.get("/menu"),
-        ]);
+  const loadData = async () => {
+    try {
+      const menuRes = await apiClient.get("/menu");
+      setMenu(menuRes.data || []);
 
+      // TABLE ORDER
+      if (tableId) {
+        const tableRes = await apiClient.get(`/tables/${tableId}`);
         setTable(tableRes.data);
-        setMenu(menuRes.data || []);
 
         if (tableRes.data.currentOrderId) {
-          await fetchOrder(tableRes.data.currentOrderId, menuRes.data);
+          await fetchOrder(tableRes.data.currentOrderId);
         }
-      } catch (err) {
-        toast.error("Failed to load POS");
-        navigate("/tables");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    loadData();
-  }, [tableId, fetchOrder, navigate]);
+      // CAR ORDER
+     if (carId) {
+
+  const res = await apiClient.get(`/orders/car/${carId}`);
+
+  if (res.data) {
+    setOrder(res.data);
+  } else {
+
+    // create new order
+    const createRes = await apiClient.post(`/cars/${carId}/start-order`);
+
+    setOrder(createRes.data.order);
+
+  }
+}
+
+    } catch (err) {
+      toast.error("Failed to load order");
+      navigate("/tables");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadData();
+
+}, [tableId, carId, orderSourceId, fetchOrder, navigate]);
 
   
   useEffect(() => {
@@ -404,9 +427,11 @@ const sendAndPrintKOT = async () => {
 
 
 const handleCashPayment = async () => {
+
   if (!order?._id) return;
 
   try {
+
     const res = await apiClient.post(`/orders/${order._id}/bill`, {
       taxPercent: checkoutTaxPercent,
       servicePercent,
@@ -415,22 +440,34 @@ const handleCashPayment = async () => {
 
     toast.success("Payment successful");
 
-    // Display the order number in a toast
-    // const orderNumber = res.data.order.orderNumber; // Use the order number directly
-    // toast.info(`Order Number: ${orderNumber}`);
-
     setOrder(res.data.order);
     setCheckoutMode(false);
 
-    // ⏳ wait for DOM
+    // 🧾 print bill
     setTimeout(() => {
       printBill(res.data.order);
     }, 300);
 
-    setTimeout(() => navigate("/tables", { replace: true }), 800);
+    // 🚗 DELETE CAR SLOT AFTER PAYMENT
+    if (carId) {
+      try {
+        await apiClient.delete(`/cars/${carId}`);
+      } catch (err) {
+        console.error("Car delete failed", err);
+      }
+    }
+
+    // 🔁 navigate back
+    setTimeout(() => {
+      navigate(carId ? "/car-o-bar" : "/tables", { replace: true });
+    }, 800);
+
   } catch (err) {
+
     toast.error(err.response?.data?.message || "Payment failed");
+
   }
+
 };
 
 // Prevent entering checkout when there are no KOTs
@@ -668,28 +705,27 @@ gap-4">
       #{orderDisplayId}
     </div>
 
-    {((table && table?.customerId) || order?.customerId || order?.customer) && (
-      <div className="mt-2 text-sm text-gray-700 space-y-1">
+{((table && table?.customerId) || order?.customer?.customerId) && (      <div className="mt-2 text-sm text-gray-700 space-y-1">
         <div>
           <span className="font-medium">Customer:</span>{" "}
           {(table?.customerId?.name) ||
-            (order?.customerId?.name) ||
-            order?.customer ||
+            order?.customer?.customerId?.name||
             ""}
         </div>
 
         <div>
           <span className="font-medium">Mobile:</span>{" "}
           {(table?.customerId?.phone) ||
-            (order?.customerId?.phone) ||
+           order?.customer?.customerId?.phone ||
             ""}
         </div>
       </div>
     )}
 
-    <div className="mt-2 text-sm text-gray-600">
-      Table {table?.tableNumber}
-    </div>
+   <div className="mt-2 text-sm text-gray-600">
+  {tableId && `Table ${table?.tableNumber}`}
+  {carId && `Car ${carNo}`}
+</div>
   </div>
 
   {cart.length === 0 && (
@@ -745,7 +781,7 @@ gap-4">
 
 
   {/* SEND TO KITCHEN */}
-  <button
+  {/* <button
     onClick={sendAndPrintKOT}
     disabled={isLocked}
     className={`w-full py-2 mt-2 rounded-lg text-white font-medium shadow-sm transition ${
@@ -755,7 +791,7 @@ gap-4">
     }`}
   >
     Send & Print KOT
-  </button>
+  </button> */}
 
   {!isCheckout && order && (
     <div className="mt-4">
@@ -774,8 +810,8 @@ gap-4">
 
 {/* BILL SUMMARY MODE */}
 {isCheckout && (
-  <BillSummary
-  mode="dine_in"
+ <BillSummary
+  mode={carId ? "carobar" : "dine_in"}
   order={order}
   table={table}
   cart={cart}
@@ -811,24 +847,44 @@ gap-4">
 
   {/* FOOTER (FIXED) */}
 {/* FOOTER */}
+{/* FOOTER */}
+{/* FOOTER */}
 <div className="p-4 border-t bg-white">
 
   {!isCheckout && !isPaid && (
-    <button
-      onClick={() => setCheckoutMode(true)}
-      className="
-        w-full
-        bg-primary
-        text-white
-        py-3
-        rounded-lg
-        font-semibold
-        hover:opacity-90
-        transition
-      "
-    >
-      Checkout
-    </button>
+    <div className="flex gap-2">
+
+      {/* SEND KOT */}
+      <button
+        onClick={sendAndPrintKOT}
+        disabled={isLocked}
+        className={`flex-1 py-3 rounded-lg font-semibold transition ${
+          isLocked
+            ? "bg-gray-300 cursor-not-allowed text-gray-600"
+            : "bg-white border border-primary text-primary hover:bg-primaryDark hover:text-white"
+        }`}
+      >
+        Send KOT
+      </button>
+
+      {/* CHECKOUT */}
+      <button
+        onClick={() => setCheckoutMode(true)}
+        className="
+          flex-1
+          bg-primary
+          text-white
+          py-3
+          rounded-lg
+          font-semibold
+          hover:opacity-90
+          transition
+        "
+      >
+        Checkout
+      </button>
+
+    </div>
   )}
 
   {isPaid && (

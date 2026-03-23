@@ -5,6 +5,7 @@ import KotPrint from "../Kitchen/Kot/KotPrint";
 import { useState, useMemo, useEffect } from "react";
 import BillPrint from "../Order/BillPrint";
 import BillSummary from "../Order/BillSummary";
+
 export default function CartSheet({
   cart,
   subtotal,
@@ -25,6 +26,26 @@ export default function CartSheet({
   const [taxPercent, setTaxPercent] = useState(0);
   const [servicePercent, setServicePercent] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const getCustomer = () => {
+  const customer =
+    order?.customerId ||
+    order?.customer?.customerId ||
+    table?.customerId;
+
+  if (!customer) return null;
+
+  if (typeof customer === "object") {
+    return {
+      name: customer.name || "Customer",
+      phone: customer.phone || ""
+    };
+  }
+
+  return {
+    name: "Customer",
+    phone: ""
+  };
+};
 const handleRemove = (item) => {
   if (item.kotQty > 0) {
     toast.info("Item already sent to kitchen");
@@ -91,16 +112,24 @@ const kotSubtotal = useMemo(() => {
               <span className="font-medium">Area:</span> {table?.area?.name || order?.area?.name}
             </div>
           )}
-          {((table && table?.customerId) || order?.customerId || order?.customer) && (
-            <div className="text-sm text-gray-700">
-              <span className="font-medium">Customer:</span> {(table?.customerId?.name) || (order?.customerId?.name) || order?.customer || ""}
-            </div>
-          )}
-          {((table && table?.customerId) || order?.customerId || order?.customer) && (
-            <div className="text-sm text-gray-700">
-              <span className="font-medium">Mobile:</span> {(table?.customerId?.phone) || (order?.customerId?.phone) || ""}
-            </div>
-          )}
+      {(() => {
+  const customer = getCustomer();
+  if (!customer) return null;
+
+  return (
+    <>
+      <div className="text-sm text-gray-700">
+        <span className="font-medium">Customer:</span> {customer.name}
+      </div>
+
+      {customer.phone && (
+        <div className="text-sm text-gray-700">
+          <span className="font-medium">Mobile:</span> {customer.phone}
+        </div>
+      )}
+    </>
+  );
+})()}
         </div>
       </div>
 

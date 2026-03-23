@@ -31,6 +31,8 @@ import { useResponsive } from "./hooks/usResponsive";
 import ViewOrders from "./pages/Order/ViewOrder"
 import { NotificationProvider } from "./context/NotificationContext";
 import { initSocket } from "./socket/socketClient";
+import CarobarPage from "./pages/CarobarPage";
+import { Car } from "lucide-react";
 
 /* =========================
    🔒 Restaurant Route
@@ -202,7 +204,25 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
+    <Route
+              path="/car-o-bar"
+              element={
+                <ProtectedRoute>
+                  <ResponsiveLayout
+                    mobile={
+                      <MobilePageWrapper>
+                        <CarobarPage />
+                      </MobilePageWrapper>
+                    }
+                    desktop={
+                      <AdminLayout>
+                        <CarobarPage />
+                      </AdminLayout>
+                    }
+                  />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/counter-pos"
               element={

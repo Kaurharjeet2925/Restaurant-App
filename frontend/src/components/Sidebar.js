@@ -10,12 +10,14 @@ import {
   BarChart3,
   Table as TableIcon,
   Coffee,
+  Car,
 } from "lucide-react";
 
 const menus = {
   owner: [
     { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
     { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+    {icon : <Car size={20} />, label: "Car-O-Bar", path:"/car-o-bar" },
     { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
     { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
     { icon: <List size={20} />, label: "Categories", path: "/categories" },
@@ -28,8 +30,9 @@ const menus = {
   admin: [
     { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
     { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
+    {icon : <Car size={20} />, label: "Car-O-Bar", path:"/car-o-bar" },
     { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
-    { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
+   // { icon: <Coffee size={20} />, label: "Kitchen", path: "/kitchen" },
     { icon: <List size={20} />, label: "Menu Items", path: "/menu-items" },
     { icon: <List size={20} />, label: "Categories", path: "/categories" },
     { icon: <List size={20} />, label: "Orders", path: "/view-orders" },
@@ -41,7 +44,7 @@ const menus = {
   waiter: [
     { icon: <Home size={20} />, label: "Home", path: "/dashboard" },
     { icon: <TableIcon size={20} />, label: "Dine-In", path: "/tables" },
-    { icon: <ShoppingBag size={20} />, label: "POS", path: "/counter-pos" },
+    {icon : <Car size={20} />, label: "Car-O-Bar", path:"/car-o-bar" },
   ],
 
   kitchen: [
