@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import PageHeader from "../../components/pageHeader";
+import { FileBarChart } from "lucide-react";
 import apiClient from "../../apiclient/apiclient";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -127,77 +129,125 @@ const SalesReport = () => {
   }, [from, to]);
 
   return (
-    <div className="p-6 min-h-screen bg-background">
+   <div className="">
 
       {/* HEADER */}
-
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Sales Report
-        </h1>
-
-        <p className="text-sm text-gray-500">
-          Overview of completed sales within selected date range
-        </p>
-      </div>
+      <PageHeader 
+        title="Sales Report" 
+        subtitle="Overview of completed sales within selected date range" 
+        
+      />
 
       {/* FILTER BAR */}
+<div className="px-5 pb-6 min-h-screen bg-white">
+      <div
+  className="
+    bg-card rounded-2xl shadow-sm border border-borderLight
+    p-4 sm:p-5 mb-6
+  "
+>
 
-      <div className="flex flex-wrap items-center gap-4 mb-6 bg-card p-4 rounded-xl shadow-card border border-borderLight">
+  <div
+    className="
+      grid grid-cols-1
+      sm:grid-cols-2
+      xl:grid-cols-[auto_auto_1fr_auto_auto]
+      gap-4
+      items-end
+    "
+  >
 
-        <div className="flex items-center gap-2">
+    {/* FROM */}
+    <div>
+      <label className="block text-sm font-medium mb-2">
+        From
+      </label>
 
-          <label className="text-sm font-medium">From</label>
+      <DatePicker
+        selected={from}
+        onChange={setFrom}
+        dateFormat="dd-MM-yyyy"
+        className="
+          w-full border border-borderLight
+          rounded-xl px-4 py-3
+          focus:outline-none focus:ring-2
+          focus:ring-primaryLight
+        "
+      />
+    </div>
 
-          <DatePicker
-            selected={from}
-            onChange={setFrom}
-            dateFormat="dd-MM-yyyy"
-            className="border border-borderLight rounded px-3 py-2 w-40"
-          />
+    {/* TO */}
+    <div>
+      <label className="block text-sm font-medium mb-2">
+        To
+      </label>
 
-        </div>
+      <DatePicker
+        selected={to}
+        onChange={setTo}
+        dateFormat="dd-MM-yyyy"
+        className="
+          w-full border border-borderLight
+          rounded-xl px-4 py-3
+          focus:outline-none focus:ring-2
+          focus:ring-primaryLight
+        "
+      />
+    </div>
 
-        <div className="flex items-center gap-2">
+    {/* SEARCH */}
+    <div>
+      <label className="block text-sm font-medium mb-2">
+        Search
+      </label>
 
-          <label className="text-sm font-medium">To</label>
+      <input
+        type="text"
+        placeholder="Search order / customer / table..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="
+          w-full border border-borderLight
+          rounded-xl px-4 py-3
+          focus:outline-none focus:ring-2
+          focus:ring-primaryLight
+        "
+      />
+    </div>
 
-          <DatePicker
-            selected={to}
-            onChange={setTo}
-            dateFormat="dd-MM-yyyy"
-            className="border border-borderLight rounded px-3 py-2 w-40"
-          />
+    {/* VIEW */}
+    <button
+      onClick={fetchReport}
+      className="
+        bg-primary hover:bg-primaryDark
+        text-white px-5 py-3 rounded-xl
+        transition
+      "
+    >
+      View
+    </button>
 
-        </div>
+    {/* DOWNLOAD */}
+    <button
+      onClick={downloadExcel}
+      className="
+        border border-primary
+        text-primary
+        hover:bg-primaryLight
+        px-5 py-3 rounded-xl
+        transition
+      "
+    >
+      Download
+    </button>
 
-        <input
-          type="text"
-          placeholder="Search order / customer / table..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border border-borderLight rounded px-4 py-2 flex-1 min-w-[250px]"
-        />
+  </div>
 
-        <button
-          onClick={fetchReport}
-          className="bg-primaryGradient text-white px-5 py-2 rounded-lg"
-        >
-          View
-        </button>
-
-        <button
-          onClick={downloadExcel}
-          className="bg-primary text-white px-5 py-2 rounded-lg"
-        >
-          Download Excel
-        </button>
-
-      </div>
+</div>
 
       {/* SUMMARY CARDS */}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
         <Card title="Today Sales" value={cards.todaySales} />
         <Card title="Last 7 Days" value={cards.weekSales} />
@@ -208,7 +258,7 @@ const SalesReport = () => {
 
       {/* CHARTS */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
 
         <ChartCard title="Sales Trend">
 
@@ -266,9 +316,9 @@ const SalesReport = () => {
 
       {/* TABLE */}
 
-      <div className="bg-card rounded-2xl shadow-card border border-borderLight">
+      <div className="bg-card rounded-2xl shadow-sm border border-borderLight overflow-hidden">
 
-        <div className="px-6 py-4 border-b border-borderLight flex justify-between">
+        <div className="px-6 py-5 border-b border-borderLight flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between gap-4">
 
           <h3 className="text-lg font-semibold">
             Sales Details
@@ -282,7 +332,7 @@ const SalesReport = () => {
 
         <div className="overflow-x-auto">
 
-          <table className="min-w-full text-sm">
+       <table className="min-w-[900px] w-full text-sm">
 
             <thead className="bg-primaryLight text-xs uppercase text-gray-600">
 
@@ -355,7 +405,7 @@ const SalesReport = () => {
         </div>
 
       </div>
-
+</div>
     </div>
   );
 };
@@ -364,14 +414,22 @@ const SalesReport = () => {
 
 const Card = ({ title, value }) => (
 
-  <div className="bg-card rounded-xl shadow-card border border-borderLight p-5">
+  <div
+    className="
+      bg-card rounded-2xl
+      shadow-sm border border-borderLight
+      p-5
+    "
+  >
 
-    <p className="text-sm text-gray-500">
+    <p className="text-sm text-gray-500 mb-2">
       {title}
     </p>
 
-    <p className="text-xl font-semibold text-gray-800">
-      {typeof value === "number" ? `₹ ${value}` : value || "N/A"}
+    <p className="text-2xl font-bold text-gray-800">
+      {typeof value === "number"
+        ? `₹ ${value}`
+        : value || "N/A"}
     </p>
 
   </div>
@@ -380,9 +438,15 @@ const Card = ({ title, value }) => (
 
 const ChartCard = ({ title, children }) => (
 
-  <div className="bg-card rounded-xl shadow-card border border-borderLight p-6">
+  <div
+    className="
+      bg-card rounded-2xl
+      shadow-sm border border-borderLight
+      p-5 sm:p-6
+    "
+  >
 
-    <h3 className="text-lg font-semibold mb-4">
+    <h3 className="text-lg font-semibold mb-5">
       {title}
     </h3>
 

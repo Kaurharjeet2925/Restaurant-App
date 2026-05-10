@@ -25,7 +25,8 @@ onIncrease,
 
   onConfirm,
   onCredit,
-  onCancel
+  onCancel,
+  isProcessing = false
 }) => {
 
   const [receivedAmount, setReceivedAmount] = useState(0);
@@ -256,30 +257,34 @@ onIncrease,
     <>
       <button
         onClick={() => onConfirm(receivedAmount)}
-        className="flex-1 bg-primary text-white py-2 rounded text-sm font-medium"
+        disabled={isProcessing}
+        className={`flex-1 bg-primary text-white py-2 rounded text-sm font-medium ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
-        Pay Now
+        {isProcessing ? "Processing..." : "Pay Now"}
       </button>
 
       <button
         onClick={onCredit}
-        className="flex-1 bg-yellow-500 text-white py-2 rounded text-sm font-medium"
+        disabled={isProcessing}
+        className={`flex-1 bg-yellow-500 text-white py-2 rounded text-sm font-medium ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
-        Pay Later
+        {isProcessing ? "Processing..." : "Pay Later"}
       </button>
     </>
   ) : (
     <>
       <button
         onClick={() => onConfirm(receivedAmount)}
-        className="flex-1 bg-primary text-white py-2 rounded text-sm font-medium"
+        disabled={isProcessing}
+        className={`flex-1 bg-primary text-white py-2 rounded text-sm font-medium ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
-        Confirm
+        {isProcessing ? "Processing..." : "Confirm"}
       </button>
 
       <button
         onClick={onCancel}
-        className="flex-1 bg-gray-200 py-2 rounded text-sm"
+        disabled={isProcessing}
+        className={`flex-1 bg-gray-200 py-2 rounded text-sm ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
         Cancel
       </button>

@@ -22,7 +22,7 @@ import MenuItems from "./pages/MenuItemManaement/MenuItems";
 import Customers from "./pages/CategoryManagement/Customers/Customers";
 import CustomerLedger from "./pages/CategoryManagement/Customers/CustomerLedger";
 //import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
-import Settings from "./pages/settings/Settings";
+import SSettings from "./pages/settings/Settings";
 import AddUser from "./pages/settings/User/AddUser";
 import  SalesReport from "./pages/Reports/DailyOrderWiseReport";
 import ActivityLog from "./pages/ActivityLogs";
@@ -339,12 +339,12 @@ function App() {
                   <ResponsiveLayout
                     mobile={
                       <MobilePageWrapper>
-                        <Settings />
+                        <SSettings />
                       </MobilePageWrapper>
                     }
                     desktop={
                       <AdminLayout>
-                        <Settings />
+                        <SSettings />
                       </AdminLayout>
                     }
                   />

@@ -56,6 +56,7 @@ const searchQuery = (params.get("q") || "").toLowerCase();
   const [showCreditModal, setShowCreditModal] = useState(false);
 const [discount, setDiscount] = useState(0);
 const [billMeta, setBillMeta] = useState(null);
+const [isProcessing, setIsProcessing] = useState(false);
 
 const orderType = "counter";
   /* ================= LOAD MENU ================= */
@@ -164,6 +165,7 @@ const finalTotal = useMemo(
   /* ================= PAY & PRINT ================= */
   const payAndPrint = async () => {
   if (cart.length === 0) return toast.info("Cart is empty");
+  setIsProcessing(true);
 
   try {
    const res = await apiClient.post("/orders/counter", {
@@ -192,9 +194,11 @@ const finalTotal = useMemo(
     setTimeout(() => {
       setCart([]);
       setOrder(null);
+      setIsProcessing(false);
     }, 2000);
   } catch (err) {
     toast.error("Payment failed");
+    setIsProcessing(false);
   }
 };
 
@@ -322,8 +326,13 @@ if (!portion || !portion.units?.length) {
   setDiscount={setDiscount}
 
   finalTotal={finalTotal}
+  isProcessing={isProcessing}
 
   onConfirm={payAndPrint}
+  onCredit={() => {
+    if (cart.length === 0) return toast.info("Cart is empty");
+    setShowCreditModal(true);
+  }}
 />
 
 </div>
@@ -350,6 +359,7 @@ if (!portion || !portion.units?.length) {
     mode="counter"
     close={() => setShowCreditModal(false)}
     onDone={async ({ name, phone }) => {
+      setIsProcessing(true);
       try {
         // 1. Lookup customer by phone
         let customerId = null;
@@ -384,11 +394,13 @@ if (!portion || !portion.units?.length) {
           setCart([]);
           setOrder(null);
           setBillMeta(null);
+          setIsProcessing(false);
         }, 2000);
       } catch (err) {
         toast.error(
           err.response?.data?.message || "Failed to save credit"
         );
+        setIsProcessing(false);
       }
     }}
   />

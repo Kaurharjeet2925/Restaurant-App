@@ -97,15 +97,7 @@ const data = {
 
 /* ===== Kitchen always receives ===== */
 
-await createNotification({
-  io: req.io,
-  message,
-  activityType: "order",
-  data,
-  createdBy: performerId,
-  targetRole: "kitchen",
-  restaurantId: req.user.restaurantId
-});
+/* ===== Kitchen always receives (REMOVED - Kitchen uses Monitor) ===== */
 await createNotification({
   io: req.io,
   message: `You created Order ${order.orderNumber}`,
@@ -251,19 +243,10 @@ await logActivity({
   meta: { kotNo: nextKotNo },
 });
 
-    // 🔔 Create notification for new KOT (kitchen, admin, superAdmin)
+    // 🔔 Create notification for new KOT (admin, owner)
     const tableInfo = order.tableId?.tableNumber ? `Table ${order.tableId.tableNumber}` : order.orderNumber;
     const userName = req.user?.name || req.user?.firstName || 'Unknown';
     const kotMsg = `New KOT ${nextKotNo} created for ${tableInfo} (${order.orderNumber})`;
-    await createNotification({
-      io: req.io,
-      message: kotMsg,
-      activityType: "kitchen",
-      data: { orderId, orderNumber: order.orderNumber, kotNo: nextKotNo },
-      createdBy: req.user?._id,
-      targetRole: "kitchen",
-      restaurantId: req.user.restaurantId,
-    });
     await createNotification({
       io: req.io,
       message: kotMsg,
@@ -644,7 +627,21 @@ exports.markItemPrepared = async (req, res) => {
 
   /* UPDATE ITEM STATUS */
 
-  kot.items[index].status = "prepared";
+  const item = kot.items[index];
+
+if (!item.preparedQty) item.preparedQty = 0;
+
+// increase prepared count
+if (item.preparedQty < item.qty) {
+  item.preparedQty += 1;
+}
+
+// update status
+if (item.preparedQty === item.qty) {
+  item.status = "prepared";
+} else {
+  item.status = "preparing";
+}
 
   if (kot.items.some(i => i.status === "prepared")) {
     kot.status = "preparing";

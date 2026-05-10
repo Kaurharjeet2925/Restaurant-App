@@ -43,15 +43,8 @@ const MenuItems = () => {
   return (
     <div className="">
 
-      {/* MOBILE HEADER */}
-      <div className="block md:hidden mb-4 ">
-        <PageHeader title="Menu Items"/>
-      </div>
-
-      {/* DESKTOP TITLE */}
-      <h1 className="hidden md:block text-3xl font-bold text-gray-800  p-5" >
-         Menu Items
-      </h1>
+      {/* HEADER */}
+      <PageHeader title="Menu Items" />
 
       {/* GRID */}
       <div className="px-5 pb-6 ">

@@ -24,14 +24,7 @@ const Categories = () => {
 
   return (
     <div className="">
-          <div className="block md:hidden mb-4 ">
-               <PageHeader title="Categories"/>
-             </div>
-       
-             {/* DESKTOP TITLE */}
-             <h1 className="hidden md:block text-3xl font-bold text-gray-800  p-5" >
-                Categories
-             </h1>
+      <PageHeader title="Categories" icon={<Utensils size={24}/>} />
       {/* GRID */}
          <div className="px-5 pb-6 ">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 ">

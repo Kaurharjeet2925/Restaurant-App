@@ -29,6 +29,7 @@ const orderSourceId = tableId || carId;
   const searchQuery = (searchParams.get("q") || "").toLowerCase();
 const [editingKot, setEditingKot] = useState(null);
  const [checkoutMode, setCheckoutMode] = useState(false);
+const [isProcessing, setIsProcessing] = useState(false);
 const [variantModalItem, setVariantModalItem] = useState(null);
 const orderType = carId ? "carobar" : "dine_in";
 const getDefaultUnit = (portionType) => {
@@ -390,6 +391,7 @@ const sendAndPrintKOT = async () => {
     return;
   }
 
+  setIsProcessing(true);
   try {
     const newItems = cart
       .filter(i => i.qty > i.kotQty)
@@ -418,10 +420,12 @@ const sendAndPrintKOT = async () => {
       } else {
         toast.success("KOT sent");
       }
+      setIsProcessing(false);
     }, 300); // 🔥 critical delay
   } catch (err) {
     console.error('[OrderPage] sendAndPrintKOT error:', err);
     toast.error("Failed to send KOT");
+    setIsProcessing(false);
   }
 };
 
@@ -429,6 +433,7 @@ const sendAndPrintKOT = async () => {
 const handleCashPayment = async () => {
 
   if (!order?._id) return;
+  setIsProcessing(true);
 
   try {
 
@@ -460,11 +465,13 @@ const handleCashPayment = async () => {
     // 🔁 navigate back
     setTimeout(() => {
       navigate(carId ? "/car-o-bar" : "/tables", { replace: true });
+      setIsProcessing(false);
     }, 800);
 
   } catch (err) {
 
     toast.error(err.response?.data?.message || "Payment failed");
+    setIsProcessing(false);
 
   }
 
@@ -617,6 +624,14 @@ const updateVariantQty = (item, unit, diff) => {
     ];
   });
 };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
 <div className="h-[calc(100vh-64px)] bg-gray-50 p-4 overflow-hidden">
@@ -830,7 +845,7 @@ gap-4">
   setDiscount={setDiscount}
 
   finalTotal={finalTotal}
-
+  isProcessing={isProcessing}
   onConfirm={handleCashPayment}
   onCancel={() => setCheckoutMode(false)}
 />
@@ -857,20 +872,21 @@ gap-4">
       {/* SEND KOT */}
       <button
         onClick={sendAndPrintKOT}
-        disabled={isLocked}
+        disabled={isLocked || isProcessing}
         className={`flex-1 py-3 rounded-lg font-semibold transition ${
-          isLocked
+          isLocked || isProcessing
             ? "bg-gray-300 cursor-not-allowed text-gray-600"
             : "bg-white border border-primary text-primary hover:bg-primaryDark hover:text-white"
         }`}
       >
-        Send KOT
+        {isProcessing ? "Processing..." : "Send KOT"}
       </button>
 
       {/* CHECKOUT */}
       <button
         onClick={() => setCheckoutMode(true)}
-        className="
+        disabled={isProcessing}
+        className={`
           flex-1
           bg-primary
           text-white
@@ -879,7 +895,8 @@ gap-4">
           font-semibold
           hover:opacity-90
           transition
-        "
+          ${isProcessing ? "opacity-70 cursor-not-allowed" : ""}
+        `}
       >
         Checkout
       </button>

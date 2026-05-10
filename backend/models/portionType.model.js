@@ -1,9 +1,15 @@
-// models/PortionType.js
 const mongoose = require("mongoose");
 
 const unitSchema = new mongoose.Schema({
-  name: { type: String, required: true },   // Half, Full, Small, Piece
-  value: { type: Number, required: true }   // % or price
+  name: {
+    type: String,
+    required: true
+  },
+
+  value: {
+    type: Number,
+    required: true
+  }
 });
 
 const portionTypeSchema = new mongoose.Schema(
@@ -17,8 +23,9 @@ const portionTypeSchema = new mongoose.Schema(
 
   type: {
     type: String,
-    enum: ["plate", "size", "quantity"],
-    required: true
+    required: true,
+    trim: true,
+    lowercase: true
   },
 
   pricingRule: {
@@ -38,7 +45,12 @@ const portionTypeSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
-/* Unique per restaurant */
-portionTypeSchema.index({ restaurantId: 1, type: 1 }, { unique: true });
+portionTypeSchema.index(
+  { restaurantId: 1, type: 1 },
+  { unique: true }
+);
 
-module.exports = mongoose.model("PortionType", portionTypeSchema);
+module.exports = mongoose.model(
+  "PortionType",
+  portionTypeSchema
+);

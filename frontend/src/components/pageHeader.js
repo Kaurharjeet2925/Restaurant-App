@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 
-export default function PageHeader({ title, icon, backButton, onBack }) {
+export default function PageHeader({
+  title,
+  subtitle,
+  icon,
+  backButton,
+  onBack,
+  actionButton,
+}) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -9,53 +16,55 @@ export default function PageHeader({ title, icon, backButton, onBack }) {
     };
 
     window.addEventListener("resize", handleResize);
+
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  return (
+   return (
     <div
-      className={`flex items-center gap-3 px-4 py-4 border-b mb-3 mt-[78px]
-        ${
-          isMobile
-            ? "bg-gradient-to-r from-purple-500 via-purple-400 to-pink-500 text-white"
-            : "bg-white"
+      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 transition-all
+        ${isMobile
+          ? "bg-primaryLight text-primaryDark mt-[78px] shadow-sm mb-4"
+          : "bg-transparent text-gray-800"
         }`}
     >
-      {/* BACK BUTTON */}
-      {backButton && isMobile && (
-        <button
-          onClick={onBack}
-          className="hover:opacity-80"
-          aria-label="Go back"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.8"
-            stroke="currentColor"
-            className="w-7 h-7"
+      <div className="flex items-center gap-3">
+        {/* BACK BUTTON */}
+        {backButton && (
+          <button
+            onClick={onBack}
+            className={`p-2 rounded-full transition-colors ${isMobile ? "hover:bg-white/20 text-primary" : "hover:bg-gray-200 text-gray-600"
+              }`}
+            aria-label="Go back"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 19.5L8.25 12l7.5-7.5"
-            />
-          </svg>
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+        )}
+
+        {/* ICON & TEXT */}
+        <div className="flex items-center gap-3">
+          {icon && <span className={`text-3xl sm:text-4xl text-primary`}>{icon}</span>}
+          <div>
+            <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight text-primary `}>
+              {title}
+            </h1>
+            {subtitle && (
+              <p className={`text-sm sm:text-base mt-0.5 font-medium ${isMobile ? "text-primary" : "text-gray-500"}`}>
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ACTION BUTTON */}
+      {actionButton && (
+        <div className="flex sm:justify-end">
+          {actionButton}
+        </div>
       )}
-
-      {/* ICON */}
-      {icon && <span className="text-2xl">{icon}</span>}
-
-      {/* TITLE */}
-      <h2
-        className={`font-bold ${
-          isMobile ? "text-xl text-white" : "text-4xl text-gray-800"
-        }`}
-      >
-        {title}
-      </h2>
     </div>
   );
 }

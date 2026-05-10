@@ -62,7 +62,12 @@ exports.updateArea = async (req, res) => {
 
     res.json(area);
   } catch (err) {
-    res.status(400).json({ message: "Failed to update area" });
+    res.status(400).json({
+      message:
+        err.code === 11000
+          ? "Area name already exists"
+          : err.message || "Failed to update area",
+    });
   }
 };
 

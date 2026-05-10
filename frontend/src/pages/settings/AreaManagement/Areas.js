@@ -21,15 +21,11 @@ const Areas = () => {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-12">
-        🏢 Areas / Floors
-      </h1>
+    <div>
 
       {/* GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
-        {/* Existing Areas */}
         {areas.map((area) => (
           <AddArea
             key={area._id}
@@ -38,7 +34,6 @@ const Areas = () => {
           />
         ))}
 
-        {/* New Area */}
         {newArea && (
           <AddArea
             area={newArea}
@@ -48,17 +43,23 @@ const Areas = () => {
             }}
           />
         )}
+
       </div>
 
-      {/* Floating Add Button */}
+      {/* FAB */}
       <button
         onClick={addNewArea}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full
-                   bg-[#ff4d4d] text-white flex items-center justify-center
-                   shadow-lg hover:bg-[#e63c3c] transition"
+        className="
+          fixed bottom-6 right-5 md:right-6
+          w-14 h-14 rounded-full
+          bg-primary text-white
+          flex items-center justify-center
+          shadow-lg hover:bg-primaryDark transition
+        "
       >
         <Plus size={26} strokeWidth={3} />
       </button>
+
     </div>
   );
 };

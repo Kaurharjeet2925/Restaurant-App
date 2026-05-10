@@ -16,13 +16,19 @@ const orderItemSchema = new mongoose.Schema({
     min: 1,
   },
   total: Number,
- status: {
-  type: String,
-  enum: ["pending", "preparing", "prepared", "served"],
-  default: "pending",
-},
-});
 
+  // ✅ ADD THIS (VERY IMPORTANT)
+  preparedQty: {
+    type: Number,
+    default: 0,
+  },
+
+  status: {
+    type: String,
+    enum: ["pending", "preparing", "prepared", "served"],
+    default: "pending",
+  },
+});
 /* ================= KOT ================= */
 const kotSchema = new mongoose.Schema(
   {

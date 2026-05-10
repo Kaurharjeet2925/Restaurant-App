@@ -61,6 +61,8 @@ exports.createItem = async (req, res) => {
     -------------------------------*/
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
+    console.log("Uploaded file:", req.file);
+
     const item = await MenuItem.create({
       name: name.trim(),
       category,

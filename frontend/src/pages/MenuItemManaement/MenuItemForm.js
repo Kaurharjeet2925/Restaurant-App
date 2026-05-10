@@ -47,6 +47,7 @@ const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
 
   const handleImage = (e) => {
     const file = e.target.files[0];
+    console.log("Selected file:", file); // Added console log to debug the selected file
     if (!file) return;
 
     setImage(file);
@@ -72,10 +73,14 @@ const MenuItemForm = ({ item = {}, categories, refresh, close }) => {
     try {
 
       if (isEditing) {
-        await apiClient.put(`/menu/${item._id}`, formData);
+        await apiClient.put(`/menu/${item._id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
         toast.success("Item updated");
       } else {
-        await apiClient.post("/menu", formData);
+        await apiClient.post("/menu", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
         toast.success("Item added");
       }
 

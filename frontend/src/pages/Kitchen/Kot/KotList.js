@@ -30,13 +30,26 @@ const KotList = ({ title, kots, reload, isReadyColumn = false }) => {
       : null;
 
   return (
-   <div className="bg-white rounded-xl shadow-sm flex flex-col h-full">
-
-      <div className="px-4 py-3 border-b font-semibold text-gray-700">
+  <div
+  className="
+    bg-white rounded-2xl
+    shadow-sm border border-borderLight
+    flex flex-col h-full
+    overflow-hidden
+  "
+>
+      <div
+  className="
+    px-5 py-4 border-b
+    font-semibold text-gray-800
+    bg-slate-50
+    flex items-center justify-between
+  "
+>
         {title} ({kots.length})
       </div>
 
-      <div className="p-3 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1">
 
         {kots.length === 0 && (
           <p className="text-center text-gray-400 text-sm">
@@ -53,9 +66,17 @@ const KotList = ({ title, kots, reload, isReadyColumn = false }) => {
           Object.values(groupedOrders).map((order) => (
             <div
               key={order.orderId}
-              className="border rounded-lg overflow-hidden"
+              className="
+  border border-green-200
+  rounded-2xl overflow-hidden
+  bg-green-50
+"
             >
-              <div className="px-3 py-2 bg-green-500 text-white text-sm font-semibold">
+              <div className="
+  px-4 py-3
+  bg-green-600 text-white
+  text-sm font-semibold
+">
                 Table {order.tableNumber} · {order.areaName}
               </div>
 

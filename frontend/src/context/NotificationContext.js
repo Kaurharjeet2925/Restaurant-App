@@ -13,6 +13,11 @@ export const NotificationProvider = ({ children }) => {
 
   /* 🔊 INIT AUDIO (UNLOCK ON FIRST USER INTERACTION) */
   useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (user.role === "kitchen") return;
+    } catch {}
+
     audioRef.current = new Audio("/notification_sound.mp3");
 
     const unlockAudio = () => {
@@ -36,6 +41,9 @@ export const NotificationProvider = ({ children }) => {
   /* 📥 LOAD UNREAD NOTIFICATIONS */
   const loadUnread = async () => {
     try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (user.role === "kitchen") return;
+      
       const res = await apiClient.get("/notifications?unread=true&limit=20");
       setNotifications(res.data.data || []);
     } catch (err) {
@@ -49,6 +57,11 @@ export const NotificationProvider = ({ children }) => {
 
   /* 🔔 SOCKET LISTENER */
   useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (user.role === "kitchen") return;
+    } catch {}
+
     // Ensure socket is initialized
     initSocket();
     let socket = getSocket();

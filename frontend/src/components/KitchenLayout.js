@@ -8,7 +8,7 @@ export default function KitchenLayout() {
   const { isMobile } = useResponsive();
 
   return (
-    <div className="h-screen flex flex-col ">
+<div className="h-screen flex flex-col bg-background overflow-hidden">
 
       {/* Header */}
       {isMobile ? (

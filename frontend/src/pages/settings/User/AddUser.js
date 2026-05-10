@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import apiClient from "../../../apiclient/apiclient";
 import { toast } from "react-toastify";
+import PageHeader from "../../../components/pageHeader";
 
 const AddUser = () => {
   const { id } = useParams();
@@ -104,179 +105,241 @@ const handleSubmit = async (e) => {
 
 
   return (
-    <div className="pt-8 px-6 pb-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-xl shadow-sm">
-        {/* HEADER */}
-        <div className="px-6 py-4 border-b">
-          <h1 className="text-xl font-semibold text-gray-800">
-            {isEditMode ? "Edit User" : "Add User"}
-          </h1>
-          <p className="text-sm text-gray-500">
-            Create staff accounts for your restaurant
-          </p>
-        </div>
+  <div className="px-5 pb-6">
 
-        {/* BODY */}
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr]">
-            {/* LEFT PROFILE */}
-            <div className="p-6 bg-gray-50 flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full bg-white border flex items-center justify-center overflow-hidden">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs text-gray-400">Profile</span>
-                )}
-              </div>
+    {/* HEADER */}
+    <PageHeader
+      title={isEditMode ? "Edit User" : "Add User"}
+      subtitle="Create staff accounts for your restaurant"
+      backButton={true}
+      onBack={() => navigate(-1)}
+    />
 
-              <label className="mt-4 text-sm text-[#ff4d4d] font-medium cursor-pointer">
-                Upload Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
+    {/* MAIN CARD */}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-5">
+
+      <form onSubmit={handleSubmit}>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+
+          {/* LEFT PROFILE */}
+          <div
+            className="
+              p-6 bg-gray-50 border-b lg:border-b-0 lg:border-r
+              flex flex-col items-center
+            "
+          >
+
+            {/* IMAGE */}
+            <div
+              className="
+                w-28 h-28 rounded-full
+                bg-white border-2 border-slate-200
+                flex items-center justify-center
+                overflow-hidden shadow-sm
+              "
+            >
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="profile"
+                  className="w-full h-full object-cover"
                 />
-              </label>
-
-              {form.role && (
-                <span className="mt-4 px-3 py-1 text-xs rounded-full bg-red-50 text-[#ff4d4d]">
-                  {form.role.toUpperCase()}
+              ) : (
+                <span className="text-sm text-gray-400">
+                  Profile
                 </span>
               )}
             </div>
 
-            {/* RIGHT FORM */}
-            <div className="p-6">
-              <div className="max-w-[860px] bg-gray-50 rounded-lg p-6">
-                <div className="mb-5">
-                  <h3 className="text-base font-semibold text-gray-800">
-                    User Information
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Basic staff details and access role
-                  </p>
-                </div>
+            {/* UPLOAD */}
+            <label
+              className="
+                mt-5 text-sm font-medium
+                text-primary cursor-pointer
+                hover:underline
+              "
+            >
+              Upload Image
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Field label="First Name">
-                    <input
-                      name="firstName"
-                      value={form.firstName}
-                      onChange={handleChange}
-                    />
-                  </Field>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
 
-                  <Field label="Last Name">
-                    <input
-                      name="lastName"
-                      value={form.lastName}
-                      onChange={handleChange}
-                    />
-                  </Field>
+            {/* ROLE BADGE */}
+            {form.role && (
+              <span
+                className="
+                  mt-5 px-4 py-1.5 rounded-full
+                  bg-primaryLight text-primary
+                  text-xs font-semibold uppercase
+                "
+              >
+                {form.role}
+              </span>
+            )}
 
-                  <Field label="Email">
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                    />
-                  </Field>
+          </div>
 
-                  <Field label="Phone">
-                    <input
-                      name="phone"
-                      value={form.phone}
-                      onChange={handleChange}
-                    />
-                  </Field>
+          {/* RIGHT FORM */}
+          <div className="p-5 sm:p-6">
 
-                  <Field label="Role">
-                    <select
-                      name="role"
-                      value={form.role}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select role</option>
-                      <option value="admin">Admin</option>
-                      <option value="waiter">Waiter</option>
-                      <option value="kitchen">Kitchen</option>
-                      <option value="billing">Billing</option>
-                    </select>
-                  </Field>
+            {/* SECTION HEADER */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800">
+                User Information
+              </h3>
 
-                  <Field label="Gender">
-                    <select
-                      name="gender"
-                      value={form.gender}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </Field>
-
-                  {!isEditMode && (
-                    <Field label="Password">
-                      <input
-                        type="password"
-                        name="password"
-                        value={form.password}
-                        onChange={handleChange}
-                      />
-                    </Field>
-                  )}
-
-                  <Field label="DOB">
-                    <input
-                      type="date"
-                      name="dateofbirth"
-                      value={form.dateofbirth}
-                      onChange={handleChange}
-                    />
-                  </Field>
-
-                  <div className="md:col-span-2">
-                    <Field label="Address">
-                      <textarea
-                        rows={3}
-                        name="address"
-                        value={form.address}
-                        onChange={handleChange}
-                      />
-                    </Field>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Basic staff details and access role
+              </p>
             </div>
+
+            {/* FORM GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              <Field label="First Name">
+                <input
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <Field label="Last Name">
+                <input
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <Field label="Email">
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <Field label="Phone">
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <Field label="Role">
+                <select
+                  name="role"
+                  value={form.role}
+                  onChange={handleChange}
+                >
+                  <option value="">Select role</option>
+                  <option value="admin">Admin</option>
+                  <option value="waiter">Waiter</option>
+                  <option value="kitchen">Kitchen</option>
+                  <option value="billing">Billing</option>
+                </select>
+              </Field>
+
+              <Field label="Gender">
+                <select
+                  name="gender"
+                  value={form.gender}
+                  onChange={handleChange}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </Field>
+
+              {!isEditMode && (
+                <Field label="Password">
+                  <input
+                    type="password"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                  />
+                </Field>
+              )}
+
+              <Field label="Date of Birth">
+                <input
+                  type="date"
+                  name="dateofbirth"
+                  value={form.dateofbirth}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="Address">
+                  <textarea
+                    rows={4}
+                    name="address"
+                    value={form.address}
+                    onChange={handleChange}
+                  />
+                </Field>
+              </div>
+
+            </div>
+
           </div>
 
-          {/* FOOTER */}
-          <div className="px-6 py-4 border-t flex justify-end gap-4 bg-white">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-md"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-[#ff4d4d] hover:bg-red-500 text-white rounded-md"
-            >
-              {isEditMode ? "Update User" : "Create User"}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+
+        {/* FOOTER */}
+        <div
+          className="
+            px-5 sm:px-6 py-4 border-t
+            flex flex-col sm:flex-row
+            justify-end gap-3
+            bg-white
+          "
+        >
+
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="
+              px-6 py-2.5 rounded-lg
+              bg-gray-100 text-gray-700
+              hover:bg-gray-200 transition
+            "
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="
+              px-6 py-2.5 rounded-lg
+              bg-primary hover:bg-primaryDark
+              text-white transition
+            "
+          >
+            {isEditMode ? "Update User" : "Create User"}
+          </button>
+
+        </div>
+
+      </form>
+
     </div>
-  );
+
+  </div>
+);
 };
 
 /* ================= FIELD ================= */
@@ -285,7 +348,7 @@ const Field = ({ label, children }) => (
     <label className="text-sm font-medium text-gray-600">{label}</label>
     {React.cloneElement(children, {
       className:
-        "border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#ff4d4d]",
+        "border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary",
     })}
   </div>
 );

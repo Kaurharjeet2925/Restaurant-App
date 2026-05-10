@@ -44,8 +44,11 @@ router.patch("/read-all", auth, markAllRead);
  */
 router.get("/activity", auth, async (req, res) => {
   try {
-    // Filter out logs with module 'notification'
-    const filter = { module: { $ne: "notification" } };
+    // Filter out logs with module 'notification' and ensure tenant safety
+    const filter = { 
+      module: { $ne: "notification" },
+      restaurantId: req.user.restaurantId 
+    };
     const result = await paginate(
       ActivityLog,
       filter,

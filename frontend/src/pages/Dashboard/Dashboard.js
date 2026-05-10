@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import PageHeader from "../../components/pageHeader";
+import { LayoutDashboard } from "lucide-react";
 import StatCard from "./components/StatCard";
 import SalesLineChart from "./components/SalesLineChart";
 import TopSellingItems from "./components/TopSellingItems";
@@ -56,16 +58,20 @@ const Dashboard = () => {
       : 0;
 
   return (
+    <>
+   <PageHeader
+  title="Restaurant Dashboard"
+  subtitle="Overview of restaurant operations and sales"
 
-    <div className="p-5 min-h-screen bg-white">
+/>
+
+  <div className="px-5 pb-6 min-h-screen bg-white">
 
       {/* HEADER */}
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-        Restaurant Dashboard
-      </h1>
+      
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-6">
+   <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
 
         <StatCard
           title="Today's Revenue"
@@ -94,18 +100,29 @@ const Dashboard = () => {
       </div>
 
       {/* KITCHEN SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+     <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">
 
         {/* Kitchen Monitor */}
-        <div className="lg:col-span-3 bg-card rounded-xl shadow-card border border-borderLight">
-
+<div
+  className="
+    xl:col-span-3
+    bg-card rounded-2xl
+    shadow-sm border border-borderLight
+    overflow-hidden
+  "
+>
           <KitchenMonitor />
 
         </div>
 
         {/* Kitchen Summary */}
-        <div className="bg-card rounded-xl shadow-card border border-borderLight p-5">
-
+<div
+  className="
+    bg-card rounded-2xl
+    shadow-sm border border-borderLight
+    p-5
+  "
+>
           <h2 className="text-sm font-semibold text-primary mb-4">
             Kitchen Summary
           </h2>
@@ -117,16 +134,26 @@ const Dashboard = () => {
       </div>
 
       {/* SALES & PAYMENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-
-        <div className="lg:col-span-2 bg-card rounded-xl shadow-card border border-borderLight p-4">
-
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-6">
+<div
+  className="
+    xl:col-span-2
+    bg-card rounded-2xl
+    shadow-sm border border-borderLight
+    p-5
+  "
+>
           <SalesLineChart data={salesTrend} />
 
         </div>
 
-        <div className="bg-card rounded-xl shadow-card border border-borderLight p-4">
-
+<div
+  className="
+    bg-card rounded-2xl
+    shadow-sm border border-borderLight
+    p-5
+  "
+>
           <PaymentStatusChart paymentData={paymentStats} />
 
         </div>
@@ -134,14 +161,19 @@ const Dashboard = () => {
       </div>
 
       {/* TOP SELLING ITEMS */}
-      <div className="mt-6 bg-card rounded-xl shadow-card border border-borderLight p-4">
-
+<div
+  className="
+    mt-6 bg-card rounded-2xl
+    shadow-sm border border-borderLight
+    p-5
+  "
+>
         <TopSellingItems items={topItems} />
 
       </div>
 
     </div>
-
+</>
   );
 
 };

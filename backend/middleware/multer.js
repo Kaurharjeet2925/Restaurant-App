@@ -3,11 +3,13 @@ const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    console.log("Saving file to uploads/");
     cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    console.log("Generated filename:", file.fieldname + "-" + unique + ext);
     cb(null, file.fieldname + "-" + unique + ext);
   }
 });
@@ -16,6 +18,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   // Accept image files
   const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  console.log("File MIME type:", file.mimetype);
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {

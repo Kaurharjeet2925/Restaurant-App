@@ -107,63 +107,190 @@ if (!["dine-in", "counter", "carobar"].includes(mode) || !phone) return;
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white w-[400px] rounded-lg p-6 shadow-xl relative">
-        <button className="absolute top-3 right-3" onClick={close}>
-          <X size={22} />
+  <div
+    className="
+      fixed inset-0 z-50
+      bg-black/50 backdrop-blur-sm
+      flex items-center justify-center
+      p-4
+    "
+  >
+
+    {/* MODAL */}
+    <div
+      className="
+        bg-white w-full max-w-md
+        rounded-2xl shadow-2xl
+        border border-borderLight
+        relative overflow-hidden
+      "
+    >
+
+      {/* HEADER */}
+      <div
+        className="
+          flex items-center justify-between
+          px-6 py-5 border-b border-borderLight
+        "
+      >
+
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">
+            {mode === "dine-in"
+              ? "Seat Customer"
+              : mode === "counter"
+              ? "Counter Customer"
+              : "Customer"}
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Enter customer details
+          </p>
+        </div>
+
+        <button
+          className="
+            w-9 h-9 rounded-lg
+            hover:bg-gray-100
+            flex items-center justify-center
+            transition
+          "
+          onClick={close}
+        >
+          <X size={20} />
         </button>
 
-        <h2 className="text-xl font-bold mb-4">
-          {mode === "dine-in" ? "Seat Customer" : "Customer"}
-        </h2>
+      </div>
 
-        <form onSubmit={handleSave}>
-          {/* PHONE FIRST */}
-          <label className="text-sm font-medium">Phone</label>
+      {/* FORM */}
+      <form
+        onSubmit={handleSave}
+        className="p-6 space-y-5"
+      >
+
+        {/* PHONE */}
+        <div>
+
+          <label className="text-sm font-medium text-gray-700 block mb-2">
+            Phone Number
+          </label>
+
           <input
-            className={`border w-full p-2 rounded mb-3 ${
-              errors.phone ? "border-red-500" : ""
-            }`}
+            className={`
+              w-full px-4 py-3 rounded-xl
+              border outline-none transition
+
+              ${
+                errors.phone
+                  ? "border-red-500"
+                  : "border-borderLight focus:border-primary focus:ring-4 focus:ring-primary/10"
+              }
+            `}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onBlur={lookupByPhone}
+            placeholder="Enter phone number"
           />
+
           {errors.phone && (
-            <div className="text-red-500 text-xs mb-2">{errors.phone}</div>
+            <div className="text-red-500 text-xs mt-1">
+              {errors.phone}
+            </div>
           )}
 
-          {/* NAME SECOND */}
-          <label className="text-sm font-medium">Name</label>
+        </div>
+
+        {/* NAME */}
+        <div>
+
+          <label className="text-sm font-medium text-gray-700 block mb-2">
+            Customer Name
+          </label>
+
           <input
-            className={`border w-full p-2 rounded mb-3 ${
-              errors.name ? "border-red-500" : ""
-            }`}
+            className={`
+              w-full px-4 py-3 rounded-xl
+              border outline-none transition
+
+              ${
+                errors.name
+                  ? "border-red-500"
+                  : "border-borderLight focus:border-primary focus:ring-4 focus:ring-primary/10"
+              }
+            `}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="Enter customer name"
           />
+
           {errors.name && (
-            <div className="text-red-500 text-xs mb-2">{errors.name}</div>
+            <div className="text-red-500 text-xs mt-1">
+              {errors.name}
+            </div>
           )}
 
-          {/* ADDRESS THIRD */}
-          <label className="text-sm font-medium">Address</label>
+        </div>
+
+        {/* ADDRESS */}
+        <div>
+
+          <label className="text-sm font-medium text-gray-700 block mb-2">
+            Address
+          </label>
+
           <textarea
-            className="border w-full p-2 rounded mb-4"
+            rows={3}
+            className="
+              w-full px-4 py-3 rounded-xl
+              border border-borderLight
+              outline-none transition
+              focus:border-primary
+              focus:ring-4 focus:ring-primary/10
+            "
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            placeholder="Enter address"
           />
+
+        </div>
+
+        {/* FOOTER */}
+        <div className="flex gap-3 pt-2">
+
+          <button
+            type="button"
+            onClick={close}
+            className="
+              flex-1 py-3 rounded-xl
+              bg-gray-100 text-gray-700
+              hover:bg-gray-200 transition
+            "
+          >
+            Cancel
+          </button>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#ff4d4d] text-white py-2 rounded hover:bg-[#e63c3c]"
+            className="
+              flex-1 py-3 rounded-xl
+              bg-primary text-white
+              hover:bg-primaryDark
+              transition
+              disabled:opacity-50
+            "
           >
-            Continue
+            {loading ? "Please wait..." : "Continue"}
           </button>
-        </form>
-      </div>
+
+        </div>
+
+      </form>
+
     </div>
-  );
+
+  </div>
+);
 };
 
 export default CustomerForm;

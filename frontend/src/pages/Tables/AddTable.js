@@ -58,9 +58,23 @@ const AddTable = ({ table = {}, refresh, close }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+   <div
+  className="
+    fixed inset-0 z-50
+    bg-black/50 backdrop-blur-sm
+    flex items-center justify-center
+    p-4
+  "
+>
 
-      <div className="bg-card w-[380px] p-6 rounded-xl border border-borderLight relative shadow-xl">
+     <div
+  className="
+    bg-card w-full max-w-md
+    p-6 rounded-2xl
+    border border-borderLight
+    relative shadow-xl
+  "
+>
 
         <button
           className="absolute top-3 right-3 text-gray-500 hover:text-black"
@@ -75,7 +89,7 @@ const AddTable = ({ table = {}, refresh, close }) => {
 
         <label className="text-sm font-medium">Table Number</label>
         <input
-          className="w-full p-2 rounded border border-borderLight focus:border-primary focus:ring-1 focus:ring-primary outline-none mb-3"
+          className="w-full p-2 rounded-xl  border border-borderLight focus:border-primary focus:ring-1 focus:ring-primary outline-none mb-3"
           value={tableNumber}
           onChange={(e) => setTableNumber(e.target.value)}
         />
@@ -102,7 +116,7 @@ const AddTable = ({ table = {}, refresh, close }) => {
 
         <input
           type="number"
-          className="w-full p-2 rounded border border-borderLight focus:border-primary focus:ring-1 focus:ring-primary outline-none mb-4"
+          className="w-full p-2 rounded-xl border border-borderLight focus:border-primary focus:ring-1 focus:ring-primary outline-none mb-4"
           value={capacity}
           onChange={(e) => setCapacity(e.target.value)}
         />

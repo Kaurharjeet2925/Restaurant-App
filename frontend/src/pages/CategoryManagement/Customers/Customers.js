@@ -28,7 +28,7 @@ const Customers = () => {
   }, [view]);
 
   const handleView = (c) => {
-    navigate(`/customers/ledger/${c.customerId}`);
+    navigate(`/customers/ledger/${c.customerId || c._id}`);
   };
 
   /* 🔹 FILTER CREDIT CUSTOMERS */
@@ -40,33 +40,18 @@ const Customers = () => {
   return (
     <div className="min-h-screen">
 
-      {/* MOBILE HEADER */}
-      <div className="md:hidden mb-4">
-        <PageHeader title={view === "all" ? "Customers" : "Credit Customers"} />
-
-        <div className="flex justify-end p-5">
+      {/* UNIFIED HEADER */}
+      <PageHeader
+        title={view === "all" ? "Customers" : "Credit Customers"}
+        actionButton={
           <button
             onClick={() => setView(view === "all" ? "credit" : "all")}
-            className="px-4 py-2 text-sm rounded-lg text-white bg-primaryGradient shadow"
+            className="px-4 py-2 text-sm md:text-base rounded-lg text-white font-medium bg-primaryGradient shadow"
           >
             {view === "all" ? "Credit Customers" : "All Customers"}
           </button>
-        </div>
-      </div>
-
-      {/* DESKTOP HEADER */}
-      <div className="hidden md:flex justify-between items-center  p-5">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {view === "all" ? "Customers" : "Credit Customers"}
-        </h1>
-
-        <button
-          onClick={() => setView(view === "all" ? "credit" : "all")}
-          className="px-4 py-2 rounded-lg text-white font-medium bg-primaryGradient"
-        >
-          {view === "all" ? "Credit Customers" : "All Customers"}
-        </button>
-      </div>
+        }
+      />
 
       {/* DESKTOP TABLE */}
       <div className="hidden md:block bg-card rounded-xl shadow-card border border-borderLight overflow-hidden p-5">
@@ -93,7 +78,7 @@ const Customers = () => {
             {filteredCustomers.map((c) => (
 
               <tr
-                key={c.customerId}
+                key={c.customerId || c._id}
                 className="border-t border-borderLight hover:bg-primaryLight/40 transition"
               >
 
@@ -141,7 +126,7 @@ const Customers = () => {
                     <button
                       onClick={async () => {
                         if (window.confirm("Delete this customer?")) {
-                          await apiClient.delete(`/customers/${c.customerId}`);
+                          await apiClient.delete(`/customers/${c.customerId || c._id}`);
                           fetchCustomers();
                         }
                       }}
@@ -162,7 +147,7 @@ const Customers = () => {
                         <button
                           onClick={() => {
                             setSelectedCustomer({
-                              customerId: c.customerId,
+                              customerId: c.customerId || c._id,
                               name: c.name,
                               totalDue: c.currentBalance,
                             });
@@ -192,7 +177,7 @@ const Customers = () => {
         {filteredCustomers.map((c) => (
 
           <div
-            key={c.customerId}
+            key={c.customerId || c._id}
             className="bg-card border border-borderLight rounded-xl shadow-card p-4"
           >
 
@@ -210,11 +195,10 @@ const Customers = () => {
 
               {view === "credit" && (
                 <span
-                  className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    c.currentBalance > 0
-                      ? "bg-red-100 text-red-600"
-                      : "bg-green-100 text-green-700"
-                  }`}
+                  className={`text-xs px-2 py-1 rounded-full font-medium ${c.currentBalance > 0
+                    ? "bg-red-100 text-red-600"
+                    : "bg-green-100 text-green-700"
+                    }`}
                 >
                   ₹{Math.abs(c.currentBalance)}{" "}
                   {c.currentBalance > 0 ? "Debit" : "Credit"}
@@ -245,7 +229,7 @@ const Customers = () => {
                     className="text-green-600 font-medium"
                     onClick={() => {
                       setSelectedCustomer({
-                        customerId: c.customerId,
+                        customerId: c.customerId || c._id,
                         name: c.name,
                         totalDue: c.currentBalance,
                       });

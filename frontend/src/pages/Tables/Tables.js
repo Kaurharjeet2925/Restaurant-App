@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import AddTable from "./AddTable";
 import { useNavigate } from "react-router-dom";
 import CustomerForm from "../CategoryManagement/Customers/CustomerForm";
-
+import PageHeader from "../../components/pageHeader";
 const statusStyles = {
   free: "bg-green-50 border-green-400",
   occupied: "bg-red-50 border-red-400",
@@ -60,18 +60,23 @@ const Tables = () => {
   }, {});
 
   return (
-    <div className="p-4 bg-background min-h-screen">
+    <div className="">
 
-      <h1 className="text-2xl font-semibold text-slate-800 mb-4">
-        Tables
-      </h1>
-
+    <PageHeader 
+  title="Restaurant Tables"
+  subtitle="Manage dining tables and occupancy"
+/>
+<div className="px-5 pb-6 bg-white min-h-screen">
       {Object.keys(groupedTables).map((area) => (
 
-        <div key={area} className="mb-6">
+        <div key={area} className="mb-8 ">
 
-          <h2 className="text-md font-semibold text-slate-700 mb-4 border-b pb-1">
-            {area}
+<h2
+  className="
+    text-lg font-semibold text-slate-800
+    mb-4 pb-2 border-b border-borderLight
+  "
+>            {area}
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-10 gap-3">
@@ -178,7 +183,7 @@ const Tables = () => {
           }}
         />
       )}
-
+</div>
     </div>
   );
 };

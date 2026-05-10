@@ -130,11 +130,32 @@ const PortionType = () => {
      UI
   -------------------------------- */
   return (
-    <div className="flex gap-6">
-      {/* LEFT SIDE */}
-      <div className="w-1/3 bg-white border rounded-xl p-4">
-        <h3 className="font-semibold mb-3">Portion Types</h3>
+  <div className="space-y-5">
 
+    {/* MOBILE + DESKTOP LAYOUT */}
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+
+      {/* LEFT PANEL */}
+      <div
+        className="
+          bg-white border border-slate-200
+          rounded-2xl shadow-sm
+          p-5
+        "
+      >
+
+        {/* HEADER */}
+        <div className="mb-5">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Portion Types
+          </h3>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Create and manage portion variations
+          </p>
+        </div>
+
+        {/* SELECT */}
         <CreatableSelect
           options={portionTypes.map((p) => ({
             value: p.type,
@@ -142,112 +163,240 @@ const PortionType = () => {
           }))}
           value={
             activeType
-              ? { value: activeType.type, label: activeType.type }
+              ? {
+                  value: activeType.type,
+                  label: activeType.type,
+                }
               : null
           }
           onChange={handleSelectType}
           onCreateOption={handleCreateType}
-          placeholder="Select or add portion type"
-          className="mb-4"
+          placeholder="Select or create type"
+          className="mb-5"
         />
 
-        {portionTypes.map((pt) => (
-          <div
-            key={pt.type}
-            onClick={() => {
-              setActiveType(pt);
-              setUnits(pt.units || [{ ...EMPTY_UNIT }]);
-              setPricingRule(pt.pricingRule || "percentage");
-            }}
-            className={`cursor-pointer px-3 py-2 rounded-lg mb-2 capitalize ${
-              activeType?.type === pt.type
-                ? "bg-red-100 text-red-600"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            {pt.type}
-          </div>
-        ))}
+        {/* LIST */}
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+
+          {portionTypes.map((pt) => (
+            <div
+              key={pt.type}
+              onClick={() => {
+                setActiveType(pt);
+                setUnits(pt.units || [{ ...EMPTY_UNIT }]);
+                setPricingRule(
+                  pt.pricingRule || "percentage"
+                );
+              }}
+              className={`
+                cursor-pointer rounded-xl
+                px-4 py-3 capitalize
+                transition border
+
+                ${
+                  activeType?.type === pt.type
+                    ? "bg-primaryLight border-primary text-primary"
+                    : "border-slate-200 hover:bg-slate-50"
+                }
+              `}
+            >
+              <div className="font-medium">
+                {pt.type.replaceAll("_", " ")}
+              </div>
+
+              <div className="text-xs text-gray-500 mt-1">
+                {pt.units?.length || 0} units
+              </div>
+            </div>
+          ))}
+
+        </div>
+
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="flex-1 bg-white border rounded-xl p-6">
+      {/* RIGHT PANEL */}
+      <div
+        className="
+          bg-white border border-slate-200
+          rounded-2xl shadow-sm
+          p-5 sm:p-6
+        "
+      >
+
         {activeType ? (
           <>
-            <h3 className="font-semibold mb-4 capitalize">
-              Edit: {activeType.type}
-            </h3>
+
+            {/* HEADER */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold capitalize text-gray-800">
+                {activeType.type.replaceAll("_", " ")}
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Configure pricing rule and units
+              </p>
+            </div>
 
             {/* PRICING RULE */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
+            <div className="mb-6">
+
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Pricing Rule
               </label>
+
               <select
                 value={pricingRule}
-                onChange={(e) => setPricingRule(e.target.value)}
-                className="w-64 border rounded-lg px-3 py-2"
+                onChange={(e) =>
+                  setPricingRule(e.target.value)
+                }
+                className="
+                  w-full sm:w-72
+                  border border-slate-300
+                  rounded-xl px-4 py-3
+                  outline-none focus:ring-2
+                  focus:ring-primaryLight
+                "
               >
-                <option value="percentage">Percentage (%)</option>
-                <option value="per_unit">Per Unit Price (₹)</option>
+                <option value="percentage">
+                  Percentage (%)
+                </option>
+
+                <option value="per_unit">
+                  Per Unit Price (₹)
+                </option>
               </select>
+
             </div>
 
             {/* UNITS */}
-            {units.map((u, i) => (
-              <div key={i} className="flex gap-3 mb-3">
-                <input
-                  className="flex-1 border rounded-lg px-3 py-2"
-                  placeholder="Unit name (e.g. Half)"
-                  value={u.name}
-                  onChange={(e) =>
-                    handleUnitChange(i, "name", e.target.value)
-                  }
-                />
-                <input
-                  className="w-32 border rounded-lg px-3 py-2"
-                  placeholder={
-                    pricingRule === "per_unit"
-                      ? "Price ₹"
-                      : "Percentage %"
-                  }
-                  value={u.value}
-                  onChange={(e) =>
-                    handleUnitChange(i, "value", e.target.value)
-                  }
-                />
-                <button
-                  onClick={() => removeUnit(i)}
-                  className="text-red-500"
+            <div className="space-y-4">
+
+              {units.map((u, i) => (
+                <div
+                  key={i}
+                  className="
+                    border border-slate-200
+                    rounded-xl p-4
+                    bg-slate-50
+                  "
                 >
-                  ✕
-                </button>
-              </div>
-            ))}
 
-            <button
-              onClick={addUnit}
-              className="text-sm text-blue-600 mt-2"
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px_auto] gap-3">
+
+                    {/* UNIT NAME */}
+                    <input
+                      className="
+                        border border-slate-300
+                        rounded-xl px-4 py-3
+                        outline-none focus:ring-2
+                        focus:ring-primaryLight
+                      "
+                      placeholder="Unit name (Half / Full)"
+                      value={u.name}
+                      onChange={(e) =>
+                        handleUnitChange(
+                          i,
+                          "name",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    {/* VALUE */}
+                    <input
+                      className="
+                        border border-slate-300
+                        rounded-xl px-4 py-3
+                        outline-none focus:ring-2
+                        focus:ring-primaryLight
+                      "
+                      placeholder={
+                        pricingRule === "per_unit"
+                          ? "Price ₹"
+                          : "Percentage %"
+                      }
+                      value={u.value}
+                      onChange={(e) =>
+                        handleUnitChange(
+                          i,
+                          "value",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    {/* DELETE */}
+                    <button
+                      onClick={() => removeUnit(i)}
+                      className="
+                        h-12 w-12 rounded-xl
+                        bg-red-50 text-red-600
+                        hover:bg-red-100
+                        transition
+                        flex items-center justify-center
+                      "
+                    >
+                      ✕
+                    </button>
+
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+
+            {/* ACTIONS */}
+            <div
+              className="
+                mt-6 flex flex-col sm:flex-row
+                gap-3 sm:justify-between
+              "
             >
-              + Add Unit
-            </button>
 
-            <div className="mt-6 flex justify-end">
+              <button
+                onClick={addUnit}
+                className="
+                  px-5 py-3 rounded-xl
+                  border border-primary
+                  text-primary
+                  hover:bg-primaryLight
+                  transition
+                "
+              >
+                + Add Unit
+              </button>
+
               <button
                 onClick={saveCurrentType}
                 disabled={loading}
-                className="bg-black text-white px-6 py-2 rounded-lg"
+                className="
+                  px-6 py-3 rounded-xl
+                  bg-primary hover:bg-primaryDark
+                  text-white transition
+                  shadow-sm
+                "
               >
-                {loading ? "Saving..." : "Save"}
+                {loading ? "Saving..." : "Save Changes"}
               </button>
+
             </div>
+
           </>
         ) : (
-          <p className="text-gray-500">Select a portion type to edit</p>
+
+          <div className="text-center py-20 text-gray-500">
+            Select or create a portion type
+          </div>
+
         )}
+
       </div>
+
     </div>
-  );
+
+  </div>
+);
 };
 
 export default PortionType;

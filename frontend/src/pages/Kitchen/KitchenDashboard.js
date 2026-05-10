@@ -4,16 +4,45 @@ import KotList from "./Kot/KotList";
 import { NotificationContext } from "../../context/NotificationContext";
 import PageHeader from "../../components/pageHeader";
 
-const StatusCard = ({ title, count, color, onClick }) => (
+const StatusCard = ({
+  title,
+  count,
+  color,
+  onClick,
+}) => (
   <div
     onClick={onClick}
-    className={`${color} text-white rounded-xl p-5 cursor-pointer shadow hover:scale-[1.02] transition`}
+    className={`
+      ${color}
+      rounded-2xl p-5
+      cursor-pointer
+      shadow-sm border border-white/10
+      hover:scale-[1.02]
+      active:scale-[0.99]
+      transition-all duration-300
+    `}
   >
-    <div className="text-lg font-semibold">{title}</div>
-    <div className="text-3xl font-bold mt-1">{count}</div>
+
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-sm opacity-90 font-medium">
+          {title}
+        </p>
+
+        <h2 className="text-3xl font-bold mt-1">
+          {count}
+        </h2>
+      </div>
+
+      <div className="text-4xl opacity-20 font-black">
+        {count}
+      </div>
+
+    </div>
+
   </div>
 );
-
 const KitchenDashboard = () => {
   const [kots, setKots] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -83,16 +112,18 @@ const KitchenDashboard = () => {
   const servedKots = kots.filter((k) => k.status === "served");
 
   return (
-   <div className="min-h-screen bg-gray-50">
-      <PageHeader
-        title={
-          activeStatus
-            ? activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1)
-            : "Kitchen Display System"
-        }
-        backButton={!!activeStatus}
-        onBack={() => setActiveStatus(null)}
-      />
+   <div className="min-h-screen bg-white">
+     <PageHeader
+  title={
+    activeStatus
+      ? activeStatus.charAt(0).toUpperCase() +
+        activeStatus.slice(1)
+      : "Kitchen Display System"
+  }
+  subtitle="Live kitchen order monitoring"
+  backButton={!!activeStatus}
+  onBack={() => setActiveStatus(null)}
+/>
 
       {loading && (
         <div className="text-center text-gray-500 py-4">
@@ -101,7 +132,7 @@ const KitchenDashboard = () => {
       )}
 
       {isMobile && !activeStatus && (
-        <div className="space-y-4 p-4">
+        <div className="space-y-4 px-5 pb-6">
           <StatusCard
             title="Pending"
             count={pendingKots.length}
@@ -158,7 +189,15 @@ const KitchenDashboard = () => {
       )}
 
       {!isMobile && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 p-6">
+       <div
+  className="
+    grid grid-cols-1
+    md:grid-cols-2
+    xl:grid-cols-4
+    gap-5
+    px-5 pb-6
+  "
+>
           <KotList title="Pending" kots={pendingKots} reload={loadKots} />
           <KotList title="Preparing" kots={preparingKots} reload={loadKots} />
 

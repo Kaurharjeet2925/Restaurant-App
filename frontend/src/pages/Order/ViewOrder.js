@@ -104,100 +104,148 @@ const handleDelete = async (id) => {
  <div className="">
    
          {/* MOBILE HEADER */}
-         <div className="block md:hidden mb-4 ">
-           <PageHeader title="Orders"/>
-         </div>
+         <PageHeader
+  title="Orders"
+  subtitle="Manage and monitor restaurant orders"
+/>
    
-         {/* DESKTOP TITLE */}
-         <h1 className="hidden md:block text-3xl font-bold text-gray-800  p-5" >
-            Orders
-         </h1>
-
       {/* FILTER BAR */}
+<div className="px-5 pb-6">
+      <div
+  className="
+    bg-card border border-borderLight
+    rounded-2xl shadow-sm
+    p-4 sm:p-5 mb-6 
+  "
+>
 
-      <div className="flex flex-wrap gap-3 mb-6 bg-card border border-borderLight rounded-xl p-4 shadow-card">
+  <div
+    className="
+      grid grid-cols-1
+      sm:grid-cols-2
+      lg:grid-cols-3
+      xl:grid-cols-6
+      gap-4
+    "
+  >
 
-        <input
-          type="text"
-          placeholder="Search Order ID, Customer, Table..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm w-72"
-        />
+    {/* SEARCH */}
+    <input
+      type="text"
+      placeholder="Search Order / Customer / Table..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl
+        text-sm w-full
+      "
+    />
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm"
-        >
-          <option value="">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="preparing">Preparing</option>
-          <option value="ready">Ready</option>
-          <option value="served">Served</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+    {/* STATUS */}
+    <select
+      value={statusFilter}
+      onChange={(e) => setStatusFilter(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl text-sm
+      "
+    >
+      <option value="">All Status</option>
+      <option value="pending">Pending</option>
+      <option value="preparing">Preparing</option>
+      <option value="ready">Ready</option>
+      <option value="served">Served</option>
+      <option value="completed">Completed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
 
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm"
-        >
-          <option value="">All Type</option>
-          <option value="dine_in">Dine-In</option>
-          <option value="counter">Counter</option>
-        </select>
+    {/* TYPE */}
+    <select
+      value={typeFilter}
+      onChange={(e) => setTypeFilter(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl text-sm
+      "
+    >
+      <option value="">All Type</option>
+      <option value="dine_in">Dine-In</option>
+      <option value="counter">Counter</option>
+    </select>
 
-        <select
-          value={paymentFilter}
-          onChange={(e) => setPaymentFilter(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm"
-        >
-          <option value="">All Payment</option>
-          <option value="paid">Paid</option>
-          <option value="partial">Partial</option>
-          <option value="unpaid">Unpaid</option>
-        </select>
+    {/* PAYMENT */}
+    <select
+      value={paymentFilter}
+      onChange={(e) => setPaymentFilter(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl text-sm
+      "
+    >
+      <option value="">All Payment</option>
+      <option value="paid">Paid</option>
+      <option value="partial">Partial</option>
+      <option value="unpaid">Unpaid</option>
+    </select>
 
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm"
-        />
+    {/* START */}
+    <input
+      type="date"
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl text-sm
+      "
+    />
 
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="border border-borderLight px-3 py-2 rounded text-sm"
-        />
+    {/* END */}
+    <input
+      type="date"
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+      className="
+        border border-borderLight
+        px-4 py-3 rounded-xl text-sm
+      "
+    />
 
-        <button
-          onClick={() => {
-            setStatusFilter("");
-            setTypeFilter("");
-            setPaymentFilter("");
-            setStartDate("");
-            setEndDate("");
-          }}
-          className="px-4 py-2 bg-primaryLight text-primary rounded text-sm"
-        >
-          Clear
-        </button>
+  </div>
 
-      </div>
+  {/* CLEAR */}
+  <div className="mt-4 flex justify-end">
+
+    <button
+      onClick={() => {
+        setStatusFilter("");
+        setTypeFilter("");
+        setPaymentFilter("");
+        setStartDate("");
+        setEndDate("");
+      }}
+      className="
+        px-5 py-2.5 rounded-xl
+        bg-primaryLight text-primary
+        hover:bg-primary hover:text-white
+        transition
+      "
+    >
+      Clear Filters
+    </button>
+
+  </div>
+
+</div>
 
       {/* TABLE */}
-
-      <div className="bg-card border border-borderLight rounded-xl shadow-card">
+<div className="bg-card border border-borderLight rounded-2xl shadow-sm overflow-hidden">
 
         <div className="overflow-x-auto">
 
-          <table className="w-full text-sm whitespace-nowrap">
+         <table className="min-w-[1600px] w-full text-sm whitespace-nowrap">
 
-            <thead className="bg-primaryLight text-gray-700">
+            <thead className="bg-primaryLight text-gray-700 text-xs uppercase">
 
               <tr>
                 <th className="p-3 text-left">Order ID</th>
@@ -413,27 +461,49 @@ const handleDelete = async (id) => {
                           order.createdAt
                         )}
                       </td>
-                      <td className="p-3 space-x-2">
-  <button
-    onClick={() => handleView(order)}
-    className=" text-blue-500 text-xs rounded"
-  >
-   <Eye width={16} height={16}/>
-  </button>
+               <td className="p-3">
+  <div className="flex items-center gap-2">
 
-  <button
-    onClick={() => handleEdit(order)}
-    className=" text-green-500 text-xs rounded"
-  >
-   <Edit2Icon width={16} height={16}/>
-  </button>
+    <button
+      onClick={() => handleView(order)}
+      className="
+        w-8 h-8 rounded-lg
+        bg-blue-50 text-blue-600
+        hover:bg-blue-100
+        flex items-center justify-center
+        transition
+      "
+    >
+      <Eye size={16} />
+    </button>
 
-  <button
-    onClick={() => handleDelete(order._id)}
-    className=" text-red-500 text-xs rounded-full"
-  >
-     <Trash width={16} height={16} />
-  </button>
+    <button
+      onClick={() => handleEdit(order)}
+      className="
+        w-8 h-8 rounded-lg
+        bg-green-50 text-green-600
+        hover:bg-green-100
+        flex items-center justify-center
+        transition
+      "
+    >
+      <Edit2Icon size={16} />
+    </button>
+
+    <button
+      onClick={() => handleDelete(order._id)}
+      className="
+        w-8 h-8 rounded-lg
+        bg-red-50 text-red-600
+        hover:bg-red-100
+        flex items-center justify-center
+        transition
+      "
+    >
+      <Trash size={16} />
+    </button>
+
+  </div>
 </td>
                     </tr>
 
@@ -449,7 +519,12 @@ const handleDelete = async (id) => {
       </div>
       {showModal && selectedOrder && (
   <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
-    <div className="bg-white p-6 w-[600px] rounded shadow-lg max-h-[80vh] overflow-y-auto">
+    <div className="
+  bg-white rounded-2xl shadow-xl
+  w-full max-w-2xl
+  mx-4 p-6
+  max-h-[85vh] overflow-y-auto
+">
       <h2 className="text-lg font-semibold mb-4">
         Order Details - {selectedOrder.orderDisplayId}
       </h2>
@@ -540,6 +615,7 @@ const handleDelete = async (id) => {
     </div>
   </div>
 )}
+</div>
     </div>
   );
 };
